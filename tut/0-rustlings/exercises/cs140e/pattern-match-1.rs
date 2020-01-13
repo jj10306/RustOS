@@ -1,6 +1,6 @@
 // FIXME: Make me compile! Diff budget: 2 lines.
 
-// I AM NOT DONE
+// I AM DONE
 
 // Do not change this definition.
 enum MyEnum {
@@ -9,7 +9,7 @@ enum MyEnum {
 }
 
 fn matcher(val: &MyEnum) -> &str {
-    match *val {
+    match &(*val) { //original is getting rid of &
         MyEnum::A(string) => string.as_str(),
         MyEnum::B(string) => string.as_str()
     }
