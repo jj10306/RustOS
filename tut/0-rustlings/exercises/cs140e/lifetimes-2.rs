@@ -1,11 +1,11 @@
 // FIXME: Make me compile! Diff budget: 3 lines.
 
-// I AM NOT DONE
+// I AM DONE
 
 // Do not modify the inner type &'a T.
-struct RefWrapper<T>(&'a T);
+struct RefWrapper<'a, T>(&'a T);
 
-impl RefWrapper {
+impl<'a, T> RefWrapper<'a, T> {
     fn inner(&self) -> &T {
         self.0
     }

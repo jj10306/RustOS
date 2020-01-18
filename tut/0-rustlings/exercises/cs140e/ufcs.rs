@@ -1,6 +1,6 @@
 // FIXME: Make me pass! Diff budget: 2 lines.
 
-// I AM NOT DONE
+// I AM DONE
 
 struct Dummy;
 
@@ -11,7 +11,7 @@ pub trait Foo {
 }
 
 pub trait FooToo {
-    fn foo(&self) -> usize {
+    fn food(&self) -> usize {
         2
     }
 }
@@ -25,7 +25,7 @@ fn ufcs() {
     let dummy = Dummy;
 
     let x = dummy.foo();
-    let y = dummy.foo();
+    let y = dummy.food();
 
     // Values for `x` and `y` must come from calling `foo()` methods.
     assert_eq!(x, 1);

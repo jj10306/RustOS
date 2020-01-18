@@ -8,7 +8,21 @@ enum Duration {
     Seconds(u32),
     Minutes(u16),
 }
-
+impl PartialEq for Duration {
+    fn eq(&self, other: &Self) -> bool {
+        let sec1 = match *self {
+            Duration::MilliSeconds(ms) => ((ms as f64) / 1000f64),
+            Duration::Seconds(s) => (s as f64),
+            Duration::Minutes(m) => ((m * 60) as f64)
+        };
+        let sec2 = match *other {
+            Duration::MilliSeconds(ms) => ((ms as f64) / 1000f64),
+            Duration::Seconds(s) => (s as f64),
+            Duration::Minutes(m) => ((m * 60) as f64)
+        };
+        sec1 == sec2
+    }
+}
 // What traits does `Duration` need to implement?
 
 #[test]

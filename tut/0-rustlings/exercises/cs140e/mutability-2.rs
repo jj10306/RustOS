@@ -3,6 +3,6 @@
 // I AM DONE
 
 pub fn main() {
-    let x = 10;
-    let x = 20;
+    let x = &mut 10;
+    *x = 20;
 }

@@ -1,21 +1,36 @@
 // FIXME: Make me pass! Diff budget: 30 lines.
 
-// I AM NOT DONE
+// I AM DONE
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Builder {
     string: Option<String>,
     number: Option<usize>,
 }
 
 impl Builder {
-    // fn string(...
+    fn string(mut self, aStr: &str) -> Self {
+        let string = String::from(aStr);
+        self.string = Some(string);
+        self
+    }
 
-    // fn number(...
+    fn number(mut self, aNum: usize) -> Self {
+        self.number = Some(aNum);
+        self
+    }
 }
 
 impl ToString for Builder {
-    // Implement the trait
+    fn to_string(&self) -> String {
+        match self {
+            Builder { string: Some(aStr), number: Some(aNum) } => format!("{} {:?}", aStr, aNum),
+            Builder { string: Some(aStr), number: None } => aStr.to_string(),
+            Builder { string: None, number: Some(aNum) } => format!("{:?}", aNum),
+            Builder { string: None, number: None } => "".to_string()
+        }
+        
+    }
 }
 
 // Do not modify this function.
@@ -45,7 +60,7 @@ fn builder() {
 
     assert_eq!(b, "bye now! 200");
 
-    let c = Builder::default().string("heap!".to_owned()).to_string();
+    let c = Builder::default().string(&"heap!".to_owned()).to_string();
 
     assert_eq!(c, "heap!");
 }

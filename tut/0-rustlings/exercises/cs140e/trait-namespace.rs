@@ -3,6 +3,8 @@
 // I AM NOT DONE
 
 // Do not change this module.
+use a::MyTrait;
+
 mod a {
     pub trait MyTrait {
         fn foo(&self) {}
