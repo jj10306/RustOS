@@ -1,6 +1,6 @@
 // FIXME: Make me pass! Diff budget: 25 lines.
 
-// I AM NOT DONE
+// I AM DONE
 
 #[derive(Debug)]
 enum Duration {

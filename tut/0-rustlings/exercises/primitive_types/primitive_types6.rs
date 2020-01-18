@@ -3,7 +3,7 @@
 // You can put this right into the `println!` where the ??? is.
 // Execute `rustlings hint primitive_types6` for hints!
 
-// I AM NOT DONE
+// I AM DONE
 
 fn main() {
     let numbers = (1, 2, 3);

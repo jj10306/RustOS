@@ -4,7 +4,7 @@
 // freshly created vector from fill_vec to its caller.
 // Execute `rustlings hint move_semantics4` for hints!
 
-// I AM NOT DONE
+// I AM DONE
 
 fn main() {
 

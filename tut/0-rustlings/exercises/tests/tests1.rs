@@ -6,7 +6,7 @@
 // This test has a problem with it -- make the test compile! Make the test
 // pass! Make the test fail! Execute `rustlings hint tests1` for hints :)
 
-// I AM NOT DONE
+// I AM DONE
 
 #[cfg(test)]
 mod tests {

@@ -1,6 +1,6 @@
 // FIXME: Make me pass! Diff budget: 2 lines.
 
-// I AM NOT DONE
+// I AM DONE
 
 // What traits does this struct need to derive?
 #[derive(Debug, PartialEq)]

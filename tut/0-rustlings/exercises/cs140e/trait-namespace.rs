@@ -1,6 +1,6 @@
 // FIXME: Make me compile! Diff budget: 1 line.
 
-// I AM NOT DONE
+// I AM DONE
 
 // Do not change this module.
 use a::MyTrait;

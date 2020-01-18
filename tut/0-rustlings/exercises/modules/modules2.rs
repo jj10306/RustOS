@@ -1,7 +1,7 @@
 // modules2.rs
 // Make me compile! Execute `rustlings hint modules2` for hints :)
 
-// I AM NOT DONE
+// I AM DONE
 
 mod delicious_snacks {
     pub use self::fruits::PEAR as fruit;
