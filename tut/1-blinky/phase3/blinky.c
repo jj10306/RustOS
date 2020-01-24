@@ -15,6 +15,17 @@ static void spin_sleep_ms(unsigned int ms) {
 }
 
 int kmain(void) {
+  //is the arm only word addressable? why are the registers in adress multiples of 4
+  //how much data does each memory location hold
+  //I thought this was 64 bit, the data sheet multiples make it seem like 32 bit (multiples of 4, each holding a byte -> 32 bit)
+
   // FIXME: STEP 1: Set GPIO Pin 16 as output.
+  *GPIO_FSEL1 |= (1 << 18);
   // FIXME: STEP 2: Continuously set and clear GPIO 16.
+  while (1) {
+    *GPIO_SET0 |= (1 << 16);
+    spin_sleep_ms(1000);
+    *GPIO_CLR0 |= (1 << 16);
+    spin_sleep_ms(1000);
+  }
 }
