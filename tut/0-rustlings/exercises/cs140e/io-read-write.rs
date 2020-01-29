@@ -5,7 +5,7 @@
 use std::io;
 
 struct ReadWrapper<T: io::Read> {
-    inner: T,
+    inner: T
 }
 
 impl<T: io::Read> io::Read for ReadWrapper<T> {
@@ -14,4 +14,4 @@ impl<T: io::Read> io::Read for ReadWrapper<T> {
     }
 }
 
-fn main() {}
+fn main() { }

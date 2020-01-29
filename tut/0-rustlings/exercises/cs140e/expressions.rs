@@ -7,15 +7,6 @@
 #[derive(Debug, PartialOrd, PartialEq, Clone, Copy)]
 struct IntWrapper(isize);
 
-// Implement a generic function here
-fn max<T>(num1: T, num2: T) -> T where T:PartialOrd {
-    if num1 > num2 {
-        return num1
-    } else {
-        return num2
-    }
-}
-
 #[test]
 fn expressions() {
     assert_eq!(max(1usize, 3), 3);

@@ -3,7 +3,7 @@
 // I AM DONE
 
 mod a {
-    pub fn f() {}
+    fn f() { }
 }
 
 // Do not modify this function.

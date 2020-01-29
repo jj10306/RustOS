@@ -14,4 +14,4 @@ impl<'a, T> RefWrapperWrapper<'a, T> {
     }
 }
 
-pub fn main() {}
+pub fn main() { }
