@@ -20,13 +20,16 @@ pub struct StackVec<'a, T: 'a> {
     storage: &'a mut [T],
     len: usize
 }
-
+// https://doc.rust-lang.org/1.30.0/book/second-edition/ch19-02-advanced-lifetimes.html
 impl<'a, T: 'a> StackVec<'a, T> {
     /// Constructs a new, empty `StackVec<T>` using `storage` as the backing
     /// store. The returned `StackVec` will be able to hold `storage.len()`
     /// values.
     pub fn new(storage: &'a mut [T]) -> StackVec<'a, T> {
-        unimplemented!()
+        StackVec {
+            storage: storage, 
+            len: 0 
+        }
     }
 
     /// Constructs a new `StackVec<T>` using `storage` as the backing store. The
@@ -38,19 +41,28 @@ impl<'a, T: 'a> StackVec<'a, T> {
     ///
     /// Panics if `len > storage.len()`.
     pub fn with_len(storage: &'a mut [T], len: usize) -> StackVec<'a, T> {
-        unimplemented!()
+        if len > storage.len() {
+            panic!("len must be less than or equal to the backing storage's length");
+        }
+        StackVec {
+            storage: storage,
+            len: len
+        }
     }
 
     /// Returns the number of elements this vector can hold.
     pub fn capacity(&self) -> usize {
-        unimplemented!()
+        self.storage.len()
     }
 
     /// Shortens the vector, keeping the first `len` elements. If `len` is
     /// greater than the vector's current length, this has no effect. Note that
     /// this method has no effect on the capacity of the vector.
     pub fn truncate(&mut self, len: usize) {
-        unimplemented!()
+        if len < self.storage.len() {
+            self.len = len;
+        }
+        
     }
 
     /// Extracts a slice containing the entire vector, consuming `self`.

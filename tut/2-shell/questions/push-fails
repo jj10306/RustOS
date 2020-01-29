@@ -1,0 +1,5 @@
+Why can StackVec::push() fail where Vec::push() does not?
+    StackVec::push() can fail because it is backed by a user supplied slice of fixed size, thus it is unable to resize
+    when an element is pushed when its length equals its capacity. Vec::push() cannot fail because if a call to push is 
+    made when the vector's length is equal to its capacity, it simply resizes by allocating new space on the heap that 
+    accomodate its new capacity. 

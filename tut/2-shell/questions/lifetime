@@ -1,0 +1,7 @@
+*
+Why is the bound required?
+    The bound is required to ensure that the type T or references that the type T holds live at least as long as 'a.
+
+What could go wrong if the bound wasn’t enforced by Rust?
+    The mutable reference with lifetime 'a could possibly outlive the data it refers to; 
+    this would lead to a dangling pointer and the possibility of a use-after-free.
