@@ -1,0 +1,5 @@
+ Both Volatile and Unique<Volatile> allow read/write volatile accesses to an underlying pointer. 
+ According to the documentation, what is the difference between these two types?   
+    - Unique<Volatile<T>> gurantees that the underlying type of the pointer, T, is Sync. 
+    Sync is implemented on "types for which it is safe to share references between threads" 
+    Source: https://doc.rust-lang.org/std/marker/trait.Sync.html

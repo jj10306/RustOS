@@ -1,0 +1,7 @@
+**
+The pop method from Vec<T> in the standard libary is implemented for all T, but the pop method from our StackVec is only implemented
+when T implements the Clone trait. Why might that be? What goes wrong when the bound is removed?
+    - The Vec in the standard library owns its backing sorage buf:RawVec<T>, whereas the StackVec is borrowing its backing storage. Since StackVec
+    doesn't own its backing storage it cannot move a value out of the backing storage, it must explicitly make a duplicate of the data by cloning it.
+    If it didn't have the trait bound on Clone, you could potentially try to move data out of the backing storage and then the owner of the backing 
+    storage may try to access that data and get an error.

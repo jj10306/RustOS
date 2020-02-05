@@ -1,0 +1,3 @@
+What do the readable!, writeable!, and readable_writeable! macros do?
+    - They handle the logic of implementing the Wrapper, Writeable and ReadableWriteable
+    traits correctly on the structure that is passed to the macro

@@ -10,6 +10,7 @@ fn assignment_text_example() {
     }
 
     for (i, v) in vec.iter().enumerate() {
+        // dbg!(*v, i * i);
         assert_eq!(*v, (i * i) as u8);
     }
 

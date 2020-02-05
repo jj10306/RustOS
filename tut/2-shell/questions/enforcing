@@ -1,0 +1,4 @@
+The ReadVolatile and WriteVolatile types make it impossible to write and read, respectively, the underlying pointer. 
+How do they accomplish this?
+    - They only implement the Readable and Writable triats, repectively, which constrains the underlying pointer to only
+    be read or write by exposing the specific functionality through an API that handles the unsafety of volatile read and writes

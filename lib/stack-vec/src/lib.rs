@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 #[cfg(test)]
 mod tests;
@@ -130,5 +130,40 @@ impl<'a, T: Clone + 'a> StackVec<'a, T> {
     }
 }
 
+//#how do you figure out these headers??
+//show weird thing if you change one header to be impl<'a,T:'a> but not the other it errors
+impl<'a, T:'a> Deref for StackVec<'a, T> {
+    type Target = [T];
+
+    fn deref(&self) -> & Self::Target {
+       self.as_slice()
+    }
+}
+
+impl<'a, T:'a> DerefMut for StackVec<'a, T> {
+
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_slice()
+    }
+}
+
+// impl<'a, T:'a> IntoIter for Stack
+impl<'a, T:'a> IntoIterator for StackVec<'a, T> {
+    type Item =  &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_slice().iter()
+    }
+}
+
+impl<'a, T:'a> IntoIterator for &'a StackVec<'a, T> {
+    type Item =  &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_slice().iter()
+    }
+}
 // FIXME: Implement `Deref`, `DerefMut`, and `IntoIterator` for `StackVec`.
 // FIXME: Implement IntoIterator` for `&StackVec`.
