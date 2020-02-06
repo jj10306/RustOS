@@ -1,4 +1,4 @@
-// #![cfg_attr(feature = "no_std", no_std)]
+#![cfg_attr(feature = "no_std", no_std)]
 
 #![feature(decl_macro)]
 
@@ -250,7 +250,7 @@ impl<T: io::Read + io::Write> Xmodem<T> {
             ioerr!(UnexpectedEof, "buf.len() < 128")
         } else {
             self.write_byte(NAK)?;
-            let first_byte = self.read_byte(false)?;
+            let first_byte = self.read_byte(true)?;
             (self.progress)(Progress::Started);
             match first_byte {
                 SOH => {
@@ -316,13 +316,13 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     ///
     /// An error of kind `Interrupted` is returned if a packet checksum fails.
     pub fn write_packet(&mut self, buf: &[u8]) -> io::Result<usize> {
-        println!("top of write");
         if buf.is_empty() {
             //end of transmission
+            self.write_byte(NAK)?;
             self.write_byte(EOT)?;
             self.expect_byte(NAK, "Expected a NAK after first EOT")?;
             self.write_byte(EOT)?;
-            self.expect_byte(NAK, "Expected a ACK after second EOT")?;
+            self.expect_byte(ACK, "Expected a ACK after second EOT")?;
             Ok(0)
         } else if buf.len() != 0 && buf.len() < 128 {
             ioerr!(UnexpectedEof, "Buf length must be a multiple of 128")
@@ -349,7 +349,6 @@ impl<T: io::Read + io::Write> Xmodem<T> {
                     ioerr!(Interrupted, "NAK received at packet transmission, retrying packet")
                 },
                 _ => {
-                    println!("in write");
                     ioerr!(InvalidData, "Neither ACK nor NAK received at packet transmission")
                 }
             }
