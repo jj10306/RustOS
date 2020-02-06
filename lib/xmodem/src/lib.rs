@@ -190,7 +190,7 @@ impl<T: io::Read + io::Write> Xmodem<T> {
             Ok(byte)
         } else {
             self.write_byte(CAN)?;
-            
+
             if read_byte != CAN {
                 ioerr!(InvalidData, expected)
             } else {
@@ -211,7 +211,15 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     /// of `ConnectionAborted` is returned. Otherwise, the error kind is
     /// `InvalidData`.
     fn expect_byte(&mut self, byte: u8, expected: &'static str) -> io::Result<u8> {
-        unimplemented!()
+        let read_byte = self.read_byte(byte != CAN)?;
+
+        let bytes_are_same = byte == read_byte;
+
+        if bytes_are_same {
+            Ok(byte)
+        } else {
+            ioerr!(InvalidData, expected)
+        }
     }
 
     /// Reads (downloads) a single packet from the inner stream using the XMODEM
