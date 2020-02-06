@@ -247,42 +247,47 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     /// An error of kind `UnexpectedEof` is returned if `buf.len() < 128`.
     pub fn read_packet(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if buf.len() < 128 {
-            ioerr!(UnexpectedEof, "buf.len() < 128")
-        } else {
+            return ioerr!(UnexpectedEof, "buf.len() < 128");
+        } 
+        if self.started == false {
             self.write_byte(NAK)?;
-            let first_byte = self.read_byte(true)?;
             (self.progress)(Progress::Started);
-            match first_byte {
-                SOH => {
-                    self.expect_byte_or_cancel(self.packet, "Packet numbers don't match")?;
-                    self.expect_byte_or_cancel(255 - self.packet, "1's complement of packet numbers don't match")?;
-                    // for i in 0..128 {
-                    //     buf[i] = self.read_byte(false)?;
-                    // }
-                    self.inner.read(buf)?;
-                    let checksum = get_checksum(buf);
-                    if self.read_byte(false)? == checksum {
-                        self.write_byte(ACK)?;
-                        (self.progress)(Progress::Packet(self.packet));
-                        Ok(128)
-                    } else {
-                        self.write_byte(NAK)?;
-                        ioerr!(Interrupted, "Checksums don't match")
-                    }
-                },
-                EOT => {    
-                    self.write_byte(NAK)?;
-                    //should I cancel here or return InvalidData
-                    self.expect_byte_or_cancel(EOT, "Expected a second EOT")?;
+            self.started = true;
+        }
+        let first_byte = self.read_byte(true)?;
+        match first_byte {
+            SOH => {
+                self.expect_byte_or_cancel(self.packet, "Packet numbers don't match")?;
+                self.expect_byte_or_cancel(255 - self.packet, "1's complement of packet numbers don't match")?;
+                // for i in 0..128 {
+                //     buf[i] = self.read_byte(false)?;
+                // }
+                self.inner.read(buf)?;
+                let checksum = get_checksum(buf);
+                if self.read_byte(false)? == checksum {
                     self.write_byte(ACK)?;
-                    Ok(0)
-                },
-                _ => {
-                    println!("{}",first_byte);
-                    ioerr!(InvalidData, "First byte was not EOT or SOH")
+                    (self.progress)(Progress::Packet(self.packet));
+                    //why do you need to update paacket number in both structs
+                    self.packet = self.packet.wrapping_add(1);
+                    Ok(128)
+                } else {
+                    self.write_byte(NAK)?;
+                    ioerr!(Interrupted, "Checksums don't match")
                 }
+            },
+            EOT => {    
+                self.write_byte(NAK)?;
+                // should I cancel here or return InvalidData
+                self.expect_byte_or_cancel(EOT, "Expected a second EOT")?;
+                self.write_byte(ACK)?;
+                self.started = false;
+                Ok(0)
+            },
+            _ => {
+                ioerr!(InvalidData, "First byte was not EOT or SOH")
             }
         }
+        
     }
 
     /// Sends (uploads) a single packet to the inner stream using the XMODEM
@@ -316,19 +321,25 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     ///
     /// An error of kind `Interrupted` is returned if a packet checksum fails.
     pub fn write_packet(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() != 0 && buf.len() < 128 {
+            return ioerr!(UnexpectedEof, "Buf length must be a multiple of 128");
+        }
+
+        if self.started == false {
+            (self.progress)(Progress::Waiting);
+            self.expect_byte(NAK, "Expected a NAK")?;
+            self.started = true;
+        }
+
+
         if buf.is_empty() {
             //end of transmission
-            self.write_byte(NAK)?;
             self.write_byte(EOT)?;
-            self.expect_byte(NAK, "Expected a NAK after first EOT")?;
+                self.expect_byte(NAK, "Expected a NAK after first EOT")?;
             self.write_byte(EOT)?;
             self.expect_byte(ACK, "Expected a ACK after second EOT")?;
             Ok(0)
-        } else if buf.len() != 0 && buf.len() < 128 {
-            ioerr!(UnexpectedEof, "Buf length must be a multiple of 128")
-        } else {
-            (self.progress)(Progress::Waiting);
-            self.expect_byte(NAK, "Expected a NAK")?;
+        }  else {
             self.write_byte(SOH)?;
             self.write_byte(self.packet)?;
             self.write_byte(255 - self.packet)?;
