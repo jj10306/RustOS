@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "no_std", no_std)]
+// #![cfg_attr(feature = "no_std", no_std)]
 
 #![feature(decl_macro)]
 
@@ -249,15 +249,17 @@ impl<T: io::Read + io::Write> Xmodem<T> {
         if buf.len() < 128 {
             ioerr!(UnexpectedEof, "buf.len() < 128")
         } else {
+            self.write_byte(NAK)?;
             let first_byte = self.read_byte(false)?;
             (self.progress)(Progress::Started);
             match first_byte {
                 SOH => {
                     self.expect_byte_or_cancel(self.packet, "Packet numbers don't match")?;
                     self.expect_byte_or_cancel(255 - self.packet, "1's complement of packet numbers don't match")?;
-                    for i in 0..128 {
-                        buf[i] = self.read_byte(false)?;
-                    }
+                    // for i in 0..128 {
+                    //     buf[i] = self.read_byte(false)?;
+                    // }
+                    self.inner.read(buf)?;
                     let checksum = get_checksum(buf);
                     if self.read_byte(false)? == checksum {
                         self.write_byte(ACK)?;
@@ -276,6 +278,7 @@ impl<T: io::Read + io::Write> Xmodem<T> {
                     Ok(0)
                 },
                 _ => {
+                    println!("{}",first_byte);
                     ioerr!(InvalidData, "First byte was not EOT or SOH")
                 }
             }
@@ -313,8 +316,47 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     ///
     /// An error of kind `Interrupted` is returned if a packet checksum fails.
     pub fn write_packet(&mut self, buf: &[u8]) -> io::Result<usize> {
-        unimplemented!()
-    }
+        println!("top of write");
+        if buf.is_empty() {
+            //end of transmission
+            self.write_byte(EOT)?;
+            self.expect_byte(NAK, "Expected a NAK after first EOT")?;
+            self.write_byte(EOT)?;
+            self.expect_byte(NAK, "Expected a ACK after second EOT")?;
+            Ok(0)
+        } else if buf.len() != 0 && buf.len() < 128 {
+            ioerr!(UnexpectedEof, "Buf length must be a multiple of 128")
+        } else {
+            (self.progress)(Progress::Waiting);
+            self.expect_byte(NAK, "Expected a NAK")?;
+            self.write_byte(SOH)?;
+            self.write_byte(self.packet)?;
+            self.write_byte(255 - self.packet)?;
+            self.inner.write(buf)?;
+            // for i in 0..128 {
+            //     self.write_byte(buf[i])?;
+            // }
+            self.write_byte(get_checksum(buf))?;
+            //does expect_byte_or_cancel make sense here?
+            let post_checksum_byte = self.read_byte(false)?;
+            match post_checksum_byte {
+                ACK => {
+                    (self.progress)(Progress::Packet(self.packet));
+                    self.packet = self.packet.wrapping_add(1);
+                    Ok(128)
+                },
+                NAK => {
+                    ioerr!(Interrupted, "NAK received at packet transmission, retrying packet")
+                },
+                _ => {
+                    println!("in write");
+                    ioerr!(InvalidData, "Neither ACK nor NAK received at packet transmission")
+                }
+            }
+
+           
+        }
+     }
 
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
