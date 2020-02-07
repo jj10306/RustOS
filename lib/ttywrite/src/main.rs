@@ -1,12 +1,14 @@
 mod parsers;
 
+
 use serial;
 use structopt;
 use structopt_derive::StructOpt;
-use xmodem::Xmodem;
+use xmodem::{Xmodem, Progress};
 
 use std::path::PathBuf;
 use std::time::Duration;
+
 
 use structopt::StructOpt;
 use serial::core::{CharSize, BaudRate, StopBits, FlowControl, SerialDevice, SerialPortSettings};
@@ -54,4 +56,27 @@ fn main() {
     let mut port = serial::open(&opt.tty_path).expect("path points to invalid TTY");
 
     // FIXME: Implement the `ttywrite` utility.
+    // let input_data;
+    let mut boxy: Box<dyn io::Read>;
+    if opt.input.is_some() {
+        //why did copy not work when using a file and vec or another file
+        let reader = File::open(opt.input.unwrap()).expect("error opening the file");
+        boxy = Box::new(reader);
+        // let mut writer: Vec<u8> = vec![];
+        // let mut writer = fs::File::create("write.txt").expect("error creating the file");
+    } else {
+        //read from stdin
+        boxy = Box::new(io::stdin());
+    }
+    if opt.raw {
+        //wouldnt this give a double reference?
+        io::copy(&mut boxy, &mut port).expect("copy failed");
+    } else {
+        fn progress_fn(progress: Progress) {
+            println!("Progress: {:?}", progress);
+        }
+        let bytes = Xmodem::transmit_with_progress(boxy, port, progress_fn).unwrap();
+        println!("Wrote {} bytes to input", bytes);
+    }
+
 }

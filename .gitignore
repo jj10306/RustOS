@@ -4,4 +4,4 @@ TAGS
 *.DS_Store
 tut/0-rustlings/temp*
 me/
-.vscode/ls 
+.vscode/

@@ -8,10 +8,11 @@
             "type": "lldb",
             "request": "launch",
             "name": "we learning",
-            "program": "${workspaceFolder}/lib/xmodem/target/debug/xmodem-3bb9efc5ff9fd23b",
-            "args": [],
+            "program": "${workspaceFolder}/lib/ttywrite/target/debug/ttywrite",
+            "args": ["/dev/tty0", "-i", "sample.txt"],
             "cwd": "${workspaceFolder}",
-            "sourceLanguages": ["rust"]
+            "sourceLanguages": ["rust"],
+            "terminal": "integrated"
         }
     ]
 }
