@@ -1,0 +1,4 @@
+Try passing in some invalid values for flags. For instance, it should not be possible to set -f to idk. 
+How does structopt know to reject invalid values?
+    - There are parser functions defined in parsers.rs that parse and validate the arguments
+    for the struct fields that specify a parsing function (char_width, flow_control, etc)
