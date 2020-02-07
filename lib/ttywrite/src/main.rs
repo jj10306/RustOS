@@ -68,15 +68,16 @@ fn main() {
         //read from stdin
         boxy = Box::new(io::stdin());
     }
+    let bytes;
     if opt.raw {
         //wouldnt this give a double reference?
-        io::copy(&mut boxy, &mut port).expect("copy failed");
+        bytes = io::copy(&mut boxy, &mut port).expect("copy failed");
     } else {
         fn progress_fn(progress: Progress) {
             println!("Progress: {:?}", progress);
         }
-        let bytes = Xmodem::transmit_with_progress(boxy, port, progress_fn).unwrap();
-        println!("Wrote {} bytes to input", bytes);
+        bytes = Xmodem::transmit_with_progress(boxy, port, progress_fn).expect("transmit failed") as u64;
     }
+    println!("Wrote {} bytes to input", bytes);
 
 }
