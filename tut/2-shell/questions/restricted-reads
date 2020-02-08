@@ -1,0 +1,5 @@
+The BCM2837 documentation states that the CLO and CHI registers are read-only. Our code enforces this property. 
+How? What prevents us from writing to CLO or CHI?
+    - The CLO and CHI registers are of type ReadVolatile<u32>. The ReadVolatile type, 
+    as discussed in previous questions, gurantees that the value is only able to be read and an error
+    will occur if an attempt to write its inner data is made
