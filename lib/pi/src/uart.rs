@@ -18,6 +18,7 @@ const MU_REG_BASE: usize = IO_BASE + 0x215040;
 const AUX_ENABLES: *mut Volatile<u8> = (IO_BASE + 0x215004) as *mut Volatile<u8>;
 
 /// Enum representing bit fields of the `AUX_MU_LSR_REG` register.
+/// The AUX_MU_LSR_REG register shows the data status.  
 #[repr(u8)]
 enum LsrStatus {
     DataReady = 1,
@@ -26,8 +27,37 @@ enum LsrStatus {
 
 #[repr(C)]
 #[allow(non_snake_case)]
+
 struct Registers {
     // FIXME: Declare the "MU" registers from page 8.
+
+    /// The AUX_MU_IO_REG register is primary used to write data to and read data from the
+    /// UART FIFOs. 
+    IO: Volatile<u8>,
+    /// The AUX_MU_IER_REG register is primary used to enable interrupts 
+    IER: Volatile<u8>,
+    /// The AUX_MU_IIR_REG register shows the interrupt status. 
+    IIR: Volatile<u8>,
+    /// The AUX_MU_LCR_REG register controls the line data format and gives access to the
+    /// baudrate register 
+    LCR: Volatile<u8>,
+    /// The AUX_MU_MCR_REG register controls the 'modem' signals. 
+    MCR: Volatile<u8>,
+    /// The AUX_MU_LSR_REG register shows the data status. 
+    LSR: Volatile<u8>,
+    /// The AUX_MU_MSR_REG register shows the 'modem' status. 
+    MSR: ReadVolatile<u8>,
+    /// The AUX_MU_SCRATCH is a single byte storage. 
+    SCRATCH:  Volatile<u8>,
+    /// The AUX_MU_CNTL_REG provides access to some extra useful and nice features not
+    /// found on a normal 16550 UART .
+    CNTL: Volatile<u8>,
+    /// The AUX_MU_STAT_REG provides a lot of useful information about the internal status of
+    /// the mini UART not found on a normal 16550 UART. 
+    STAT: ReadVolatile<u32>,
+    /// The AUX_MU_BAUD register allows direct access to the 16-bit wide baudrate counter. 
+    BAUD: Volatile<u32>
+
 }
 
 /// The Raspberry Pi's "mini UART".
@@ -48,16 +78,33 @@ impl MiniUart {
         let registers = unsafe {
             // Enable the mini UART as an auxiliary device.
             (*AUX_ENABLES).or_mask(1);
-            &mut *(MU_REG_BASE as *mut Registers)
+            &mut *(MU_REG_BASE as *mut Registers) 
+
         };
 
-        // FIXME: Implement remaining mini UART initialization.
-        unimplemented!()
+            //setting the data size to 8 bits
+            registers.LCR.or_mask(0b11);
+
+            //setting the BAUD rate to ~115200 (baud divider of 270)
+            registers.BAUD.and_mask(0);
+            registers.BAUD.or_mask(0b11100001000000000);
+
+            //setting GPIO pins 14 and 15 to alternative function 5 (TXD1/RDXD1)
+            Gpio::new(14).into_alt(Function::Alt5);
+            Gpio::new(15).into_alt(Function::Alt5);
+
+            //enabling the UART transmitter and receiver
+            registers.CNTL.or_mask(0b11);
+            
+            MiniUart {
+                registers,
+                timeout: None
+            }
     }
 
     /// Set the read timeout to `t` duration.
     pub fn set_read_timeout(&mut self, t: Duration) {
-        unimplemented!()
+        self.timeout = Some(t);
     }
 
     /// Write the byte `byte`. This method blocks until there is space available

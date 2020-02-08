@@ -39,23 +39,24 @@ unsafe fn kmain() -> ! {
 
     //* GPIO_FSEL1.write_volatile(GPIO_FSEL1.read_volatile() | (0b001 << 18));
     loop {
+        const LITTY: u64 = 100000;
         gpio6_output.set();
-        spin_sleep(Duration::from_micros(500000));
+        spin_sleep(Duration::from_micros(LITTY));
         gpio6_output.clear();
         // spin_sleep(Duration::from_micros(1000000));
 
         gpio13_output.set();
-        spin_sleep(Duration::from_micros(500000));
+        spin_sleep(Duration::from_micros(LITTY));
         gpio13_output.clear();
         // spin_sleep(Duration::from_micros(1000000));
 
         gpio19_output.set();
-        spin_sleep(Duration::from_micros(500000));
+        spin_sleep(Duration::from_micros(LITTY));
         gpio19_output.clear();
         // spin_sleep(Duration::from_micros(1000000));
 
         gpio26_output.set();
-        spin_sleep(Duration::from_micros(500000));
+        spin_sleep(Duration::from_micros(LITTY));
         gpio26_output.clear();
         // spin_sleep(Duration::from_micros(1000000));
     }
