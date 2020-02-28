@@ -1,15 +1,15 @@
 use core::fmt;
 use core::time::Duration;
 
-use shim::io;
 use shim::const_assert_size;
+use shim::io;
 
 use volatile::prelude::*;
-use volatile::{Volatile, ReadVolatile, Reserved};
+use volatile::{ReadVolatile, Reserved, Volatile};
 
-use crate::timer;
 use crate::common::IO_BASE;
-use crate::gpio::{Gpio, Function};
+use crate::gpio::{Function, Gpio};
+use crate::timer;
 
 /// The base address for the `MU` registers.
 const MU_REG_BASE: usize = IO_BASE + 0x215040;
@@ -75,11 +75,13 @@ struct Registers {
     STAT: ReadVolatile<u32>,
 
     /// The AUX_MU_BAUD register allows direct access to the 16-bit wide baudrate counter. 
-    // BAUD: [Volatile<u8>; 2],
-    BAUD: Volatile<u32>
+    BAUD: Volatile<u16>,
+    // __r9: [Volatile<u8>; 2]
     // _r9: [Reserved<u8>; 2],
 
 }
+
+const_assert_size!(Registers, 0x7E21506C - 0x7E215040);
 
 /// The Raspberry Pi's "mini UART".
 pub struct MiniUart {
@@ -103,8 +105,20 @@ impl MiniUart {
 
         };
 
+
+
+
+        registers.LCR.and_mask(0b11111100);
+        registers.LCR.or_mask(0b00000011);
+        registers.BAUD.write(270);
+
+        Gpio::new(14).into_alt(Function::Alt5);
+        Gpio::new(15).into_alt(Function::Alt5);
+
+        registers.CNTL.and_mask(0b11111100);
+        registers.CNTL.or_mask(0b00000011);
             //setting the data size to 8 bits
-            registers.LCR.or_mask(0b11);
+            // registers.LCR.or_mask(0b11);
             // registers.LCR.write(0b11);
 
             //setting the BAUD rate to ~115200 (baud divider of 270)
@@ -115,16 +129,16 @@ impl MiniUart {
             // registers.BAUD[0].write(0b00001110);
             // registers.BAUD[1].write(0b1);
 
-            registers.BAUD.and_mask(0);
-            registers.BAUD.or_mask(0b100001110);
+            // registers.BAUD.and_mask(0);
+            // registers.BAUD.or_mask(0b100001110);
             // registers.BAUD.write(0b100001110);
 
             //setting GPIO pins 14 and 15 to alternative function 5 (TXD1/RDXD1)
-            Gpio::new(14).into_alt(Function::Alt5);
-            Gpio::new(15).into_alt(Function::Alt5);
+            // Gpio::new(14).into_alt(Function::Alt5);
+            // Gpio::new(15).into_alt(Function::Alt5);
 
             //enabling the UART transmitter and receiver
-            registers.CNTL.or_mask(0b11);
+            // registers.CNTL.or_mask(0b11);
             // registers.CNTL.write(0b11);
             
             MiniUart {
@@ -232,7 +246,7 @@ mod uart_io {
                 Ok(_) => {
                     let mut num_bytes = 0;
                     //check for a byte and bounds check- should always read at least one byte 
-                    while self.has_byte() && buf.len() < num_bytes {
+                    while self.has_byte() && buf.len() > num_bytes {
                         buf[num_bytes] = self.read_byte();
                         num_bytes += 1;
                     }
@@ -241,15 +255,13 @@ mod uart_io {
                 Err(_) => Err(io::Error::new(io::ErrorKind::TimedOut, "Timed out when waiting for the first byte"))
             }
         }
-
-
     }
     impl io::Write for MiniUart {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             for &byte in buf {
                 self.write_byte(byte);
             }
-            Ok(1)
+            Ok(buf.len())
         }
         fn flush(&mut self) -> io::Result<()> {
             Ok(())

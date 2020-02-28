@@ -1,0 +1,5 @@
+Without the bootloader timing out and retrying a reception, it is possible for the transmitter to stall indefinitely under some conditions. 
+What are those conditions, and why would the transmitter stall indefinitely?
+    - The conditions for that are when the receiver sends a NAK indicating that it is ready to receive data,
+    but the sender is not ready to send data. Without a time out this would cause a timeout because the receiver would 
+    constatnly be waiting for the sender to send data after they send a NAK.

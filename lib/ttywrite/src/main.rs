@@ -55,6 +55,17 @@ fn main() {
     let opt = Opt::from_args();
     let mut port = serial::open(&opt.tty_path).expect("path points to invalid TTY");
 
+    let mut port_settings = port.read_settings().expect("Error accessing port settings");
+
+    port_settings.set_baud_rate(opt.baud_rate).expect("Error setting the BAUD rate");
+    port_settings.set_char_size(opt.char_width);
+    port_settings.set_stop_bits(opt.stop_bits);
+    port_settings.set_flow_control(opt.flow_control);
+    port.write_settings(&port_settings).expect("Error setting port's settings");
+    port.set_timeout(Duration::new(opt.timeout, 0)).expect("Error setting timeout value");
+
+
+
     // FIXME: Implement the `ttywrite` utility.
     // let input_data;
     let mut boxy: Box<dyn io::Read>;

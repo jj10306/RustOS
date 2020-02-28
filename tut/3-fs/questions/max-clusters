@@ -1,0 +1,6 @@
+The FAT32 design enjoins several file limitations. What is the maximum number of clusters that a FAT32 file system can contain, and what dictates this limitation? 
+Would you expect this limitation to be the same or different in a file system named FAT16?
+
+    - The maximum number of clusters is 2^28 - 1 in FAT32, this is limited by the number of bits in a FAT entry.
+        I would expect the same limitation in FAT16 file system, thus the maximum number of clusters in FAT16 would be 2^16 - 1
+        

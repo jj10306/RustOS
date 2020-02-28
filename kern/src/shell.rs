@@ -1,6 +1,20 @@
+use shim::io;
+use shim::path::{Path, PathBuf};
+
 use stack_vec::StackVec;
 
+use pi::atags::Atags;
+
+// use fat32::traits::FileSystem;
+// use fat32::traits::{Dir, Entry};
+
 use crate::console::{kprint, kprintln, CONSOLE};
+use crate::ALLOCATOR;
+// use crate::FILESYSTEM;
+
+use core::time::Duration;
+use pi::timer::spin_sleep;
+use core::str::from_utf8;
 
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
@@ -37,12 +51,94 @@ impl<'a> Command<'a> {
 
     /// Returns this command's path. This is equivalent to the first argument.
     fn path(&self) -> &str {
-        unimplemented!()
+        self.args[0]
     }
 }
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
-/// returns if the `exit` command is called.
+/// never returns.
 pub fn shell(prefix: &str) -> ! {
-    unimplemented!()
+    spin_sleep(Duration::new(8, 0));
+    kprintln!("a VERY warm welcome to ...");
+    kprintln!("~~~~~~~~~~~~~~ JOS ~~~~~~~~~~~~~~");
+
+    loop {
+
+        kprint!("{}", prefix);
+
+        let a = &mut [0u8; 512];
+        let mut input_buf = StackVec::new(a);  //should I be handling if the prefix is longer than one character?
+        loop {
+            let mut consoley = CONSOLE.lock();
+            let current_byte = consoley.read_byte();
+            if current_byte == b'\n' || current_byte == b'\r' {
+                match from_utf8(input_buf.as_slice()) {
+                    Ok(res) => {
+                        kprintln!();
+                        let arg_buf = &mut [""; 64]; //slice that the arguments will be put into
+                        match Command::parse(res, arg_buf) {
+                            Ok(command) => {
+                                let command_path = command.path();
+                                match command_path {
+                                    "echo" => echo(& command.args.as_slice()[1..]),
+                                    _ => kprintln!("unknown command: ${}", command_path)
+                                }
+                            },
+                            Err(Error::Empty) => {
+                                kprintln!();
+                            },
+                            Err(Error::TooManyArgs) => {
+                                kprintln!("error: too many arguments");
+                            }
+                        };
+                    },
+                    Err(e) => kprintln!("Failed converting from str to [u8]"),
+                }
+                break;
+            } else {
+                if !input_buf.is_full() {
+                    if is_visible_ascii(current_byte) {
+                        if is_erase_ascii(current_byte) {
+                            if input_buf.len() > 0 {
+                                consoley.write_byte(8);
+                                consoley.write_byte(b' ');
+                                consoley.write_byte(8);
+                                input_buf.pop();
+                            }
+                        } else {
+                            input_buf.push(current_byte);
+                            consoley.write_byte(current_byte);
+                        }
+                    }
+                } else {
+                    if is_erase_ascii(current_byte) {
+                        if input_buf.len() > 0 {
+                            consoley.write_byte(8);
+                            consoley.write_byte(b' ');
+                            consoley.write_byte(8);
+                            input_buf.pop();
+                        }
+                    } else {
+                        consoley.write_byte(7u8);
+                    }
+                }
+            }
+        }
+    }
+}
+
+//helper functions for my shell() function
+
+
+fn echo(args: & [&str]) {
+    for s in args {
+        kprint!("{} ", s);
+    }
+    kprintln!();
+}
+fn is_visible_ascii(ascii_value: u8) -> bool {
+    ascii_value >= 32 && ascii_value <= 127
+}
+fn is_erase_ascii(ascii_value: u8) -> bool {
+    ascii_value == 8 || ascii_value == 127
 }

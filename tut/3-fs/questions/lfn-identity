@@ -1,0 +1,5 @@
+Given the bytes for a directory entry, how, precisely, do you determine whether the entry is an LFN entry or a regular directory entry? 
+Be specific about which bytes you read and what their values should be.
+
+    - If the byte at offset 11 of a directory entry is x0F then it is a LFN, otherwise it is a regular directory entry
+    

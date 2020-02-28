@@ -1,0 +1,5 @@
+Is there a limit to the size of a file? 
+If so, what is the maximum size, in bytes, of a file, and what determines it?
+
+    - Yes there is a limit, the maximum size is 4GB. This is determined by "The size of the file in bytes" 
+    field of the Regular Directory Entry which is located at an offset of 28 bytes

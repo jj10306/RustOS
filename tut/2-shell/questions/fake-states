@@ -1,0 +1,5 @@
+Consider what would happen if we let the user choose the initial state for a Gpio structure.
+ What could go wrong?
+    - If a user chose an initial state and it wasn't hadnled correctly by the device driver, then it would be possible
+    for the state the user thinks they are in and the hardware to not necessarily reflect that same state
+

@@ -1,0 +1,10 @@
+You might be thinking that the free space we’ve set apart isn’t enough. This is a fair concern. 
+One way to answer the question is to look at the file size of kernels from successful operating systems. 
+Would they fit?
+
+Determine how large the kernel binary is for the operating system you’re running now. 
+On newer versions of macOS, the binary is /System/Library/Kernels/kernel. On older versions of macOS, the binary 
+is /mach_kernel. On Linux, the binary is usually located in /boot/ and is named either vmlinuz, vmlinux, or bzImage. 
+How big is your kernel’s binary? Would it fit in the 63.5MiB free space we’ve created?
+
+    - The kernel on the VM I am running is 8MiB so it would fit in the space that we've created

@@ -1,1 +1,7 @@
 **
+Read through the tests we have provided in src/tests.rs. 
+Which tests would fail to compile if the Deref implementation did not exist? 
+What about the DerefMut implementation? Why?
+    - When the Deref trait is unimplemented, it would cause all the tests that have some sort of explicit dereferencing or
+    indexing to fail due to the fact that indexing is syntactic sugar *val.index()(index_oob, index_oob_after_truncate, indexing). 
+    Similarly, without the DerefMut implementation, the mut_indexing test would fail for similar reasons stated above.

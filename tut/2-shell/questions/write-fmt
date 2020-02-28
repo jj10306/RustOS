@@ -1,0 +1,4 @@
+The _print helper function calls write_fmt on an instance of MutexGuard<Console>, the return value from Mutex<Console>::lock(). 
+Which type will have its write_fmt method called, and where does the method implementation come from?
+    - The Console type will have its write_fmt method called since the MutexGuard's Deref implementation returns a Console type, deref coercion will give us a Console type. 
+    This is a provided method that you get "for free" by implementing the required write_str method of the Write trait.

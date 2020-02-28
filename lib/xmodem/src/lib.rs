@@ -259,11 +259,13 @@ impl<T: io::Read + io::Write> Xmodem<T> {
             SOH => {
                 self.expect_byte_or_cancel(self.packet, "Packet numbers don't match")?;
                 self.expect_byte_or_cancel(255 - self.packet, "1's complement of packet numbers don't match")?;
-                // for i in 0..128 {
-                //     buf[i] = self.read_byte(false)?;
-                // }
-                self.inner.read(buf)?;
-                let checksum = get_checksum(buf);
+                let mut checksum = 0u8;
+                for i in 0..128 {
+                    buf[i] = self.read_byte(false)?;
+                    checksum = checksum.wrapping_add(buf[i]);
+                }
+                // self.inner.read(buf)?;
+                // let checksum = get_checksum(buf);
                 if self.read_byte(false)? == checksum {
                     self.write_byte(ACK)?;
                     (self.progress)(Progress::Packet(self.packet));
@@ -343,11 +345,13 @@ impl<T: io::Read + io::Write> Xmodem<T> {
             self.write_byte(SOH)?;
             self.write_byte(self.packet)?;
             self.write_byte(255 - self.packet)?;
-            self.inner.write(buf)?;
-            // for i in 0..128 {
-            //     self.write_byte(buf[i])?;
-            // }
-            self.write_byte(get_checksum(buf))?;
+            // self.inner.write(buf)?;
+            let mut checksum = 0u8;
+            for i in 0..128 {
+                self.write_byte(buf[i])?;
+                checksum = checksum.wrapping_add(buf[i]);
+            }
+            self.write_byte(checksum)?;
             //does expect_byte_or_cancel make sense here?
             let post_checksum_byte = self.read_byte(false)?;
             match post_checksum_byte {
@@ -363,8 +367,7 @@ impl<T: io::Read + io::Write> Xmodem<T> {
                     ioerr!(InvalidData, "Neither ACK nor NAK received at packet transmission")
                 }
             }
-
-           
+ 
         }
      }
 

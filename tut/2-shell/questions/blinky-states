@@ -1,0 +1,3 @@
+When you implementing the blinky code in phase 4 of lab 1, you implicitly implemented a subset of this state machine. 
+Which transitions did your code implement?
+    - My code implemented the "self" transitions of the Output state: set and clear

@@ -1,0 +1,8 @@
+Your shell makes use of much of the code you’ve written. 
+Briefly explain: which pieces does it makes use of and in what way?
+    - The shell uses the StackVec as a dynamic backing structure for the Command struct and also to buffer the user's shell input.
+    It also uses the Timer device driver functionality to call spin_sleep in order to pause for a certain amount of time before
+    starting the shell's output. I use the globally mutable CONSOLE to read and write in the shell; kprintln, read_byte, write_byte are used
+    
+
+

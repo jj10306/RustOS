@@ -8,11 +8,11 @@
             "type": "lldb",
             "request": "launch",
             "name": "we learning",
-            "program": "${workspaceFolder}/lib/ttywrite/target/debug/ttywrite",
-            "args": ["/dev/tty0", "-i", "sample.txt"],
+            "program": "${workspaceFolder}/kern/target/x86_64-unknown-linux-gnu/debug/kernel-1abe7bb13b3a38b4",
+            // "args": ["/dev/tty0", "-i", "sample.txt"],
             "cwd": "${workspaceFolder}",
             "sourceLanguages": ["rust"],
-            "terminal": "integrated"
+            // "terminal": "integrated"
         }
     ]
 }

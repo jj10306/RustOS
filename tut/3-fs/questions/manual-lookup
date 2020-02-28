@@ -1,0 +1,5 @@
+Given an EBPB, describe the series of steps you would take to find the starting cluster for the file /a/b/c.txt.
+
+    - Mask the EBPB to get the value of the four bytes starting with the byte at offset 44, since this is the 
+    cluster number for the root directory
+
