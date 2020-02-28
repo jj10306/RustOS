@@ -101,7 +101,7 @@ impl MasterBootRecord {
         }
         let mbr = unsafe{ core::mem::transmute::<[u8; 512], MasterBootRecord>(*buf) };
 
-        if mbr.valid_bootsector != 0x55aa {
+        if mbr.valid_bootsector != 0xAA55 {
             return Err(Error::BadSignature);
         } 
         
@@ -112,14 +112,14 @@ impl MasterBootRecord {
         }
     }
     fn has_valid_bootable_indicators(mbr: &MasterBootRecord) -> Option<u8> {
-        if mbr.partition_table_entry_1.bootable_indicator != 0 || mbr.partition_table_entry_1.bootable_indicator != 0x80 {
+        if mbr.partition_table_entry_1.bootable_indicator != 0 && mbr.partition_table_entry_1.bootable_indicator != 0x80 {
+            Some(0)
+        } else if mbr.partition_table_entry_2.bootable_indicator != 0 && mbr.partition_table_entry_2.bootable_indicator != 0x80 {
             Some(1)
-        } else if mbr.partition_table_entry_2.bootable_indicator != 0 || mbr.partition_table_entry_2.bootable_indicator != 0x80 {
+        } else if mbr.partition_table_entry_3.bootable_indicator != 0 && mbr.partition_table_entry_3.bootable_indicator != 0x80 {
             Some(2)
-        } else if mbr.partition_table_entry_3.bootable_indicator != 0 || mbr.partition_table_entry_3.bootable_indicator != 0x80 {
+        } else if mbr.partition_table_entry_4.bootable_indicator != 0 && mbr.partition_table_entry_4.bootable_indicator != 0x80 {
             Some(3)
-        } else if mbr.partition_table_entry_4.bootable_indicator != 0 || mbr.partition_table_entry_4.bootable_indicator != 0x80 {
-            Some(4)
         } else {
             None
         }

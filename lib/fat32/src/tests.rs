@@ -13,6 +13,7 @@ use crate::vfat;
 
 use mbr::{MasterBootRecord, PartitionEntry, CHS};
 // use vfat::{BiosParameterBlock, VFat, VFatHandle};
+use vfat::{BiosParameterBlock};
 
 // #[derive(Clone)]
 // struct StdVFatHandle(Arc<Mutex<VFat<Self>>>);
@@ -132,38 +133,38 @@ fn test_mbr() {
     MasterBootRecord::from(Cursor::new(&mut data[..])).expect("valid MBR");
 }
 
-// #[test]
-// fn check_ebpb_size() {
-//     check_size!(BiosParameterBlock, 512);
-// }
+#[test]
+fn check_ebpb_size() {
+    check_size!(BiosParameterBlock, 512);
+}
 
-// #[test]
-// fn check_ebpb_signature() {
-//     let mut data = [0u8; 1024];
-//     data[510..512].copy_from_slice(&[0x55, 0xAA]);
+#[test]
+fn check_ebpb_signature() {
+    let mut data = [0u8; 1024];
+    data[510..512].copy_from_slice(&[0x55, 0xAA]);
 
-//     let e = BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).unwrap_err();
-//     expect_variant!(e, vfat::Error::BadSignature);
+    let e = BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).unwrap_err();
+    expect_variant!(e, vfat::Error::BadSignature);
 
-//     BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).unwrap();
-// }
+    BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).unwrap();
+}
 
-// #[test]
-// fn test_ebpb() {
-//     let mut ebpb1 = resource!("ebpb1.img");
-//     let mut ebpb2 = resource!("ebpb2.img");
+#[test]
+fn test_ebpb() {
+    let mut ebpb1 = resource!("ebpb1.img");
+    let mut ebpb2 = resource!("ebpb2.img");
 
-//     let mut data = [0u8; 1024];
-//     ebpb1
-//         .read_exact(&mut data[..512])
-//         .expect("read resource data");
-//     ebpb2
-//         .read_exact(&mut data[512..])
-//         .expect("read resource data");
+    let mut data = [0u8; 1024];
+    ebpb1
+        .read_exact(&mut data[..512])
+        .expect("read resource data");
+    ebpb2
+        .read_exact(&mut data[512..])
+        .expect("read resource data");
 
-//     BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).expect("valid EBPB");
-//     BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).expect("valid EBPB");
-// }
+    BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).expect("valid EBPB");
+    BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).expect("valid EBPB");
+}
 
 // #[test]
 // fn check_entry_sizes() {
