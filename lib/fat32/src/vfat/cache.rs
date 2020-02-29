@@ -14,7 +14,7 @@ struct CacheEntry {
 }
 
 pub struct Partition {
-    /// The physical sector where the partition begins.
+    /// The physical sector where the partition begins.     
     pub start: u64,
     /// Number of sectors
     pub num_sectors: u64,
