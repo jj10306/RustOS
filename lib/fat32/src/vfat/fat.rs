@@ -35,8 +35,8 @@ impl FatEntry {
             Status::Data(Cluster::from(masked_value))
         } else if masked_value == 0xFFFFFF7 {
             Status::Bad
-        } else {
-            Status::Eoc(Cluster::from(masked_value))
+        } else { //no place for an ID FatEntry
+            Status::Eoc(masked_value)
         }
     }
 }

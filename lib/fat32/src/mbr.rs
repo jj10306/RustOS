@@ -26,7 +26,7 @@ pub struct PartitionEntry {
     starting_chs: CHS,
     partition_type: u8,
     ending_chs: CHS,
-    relative_sector: u32,
+    pub relative_sector: u32,
     total_sectors: u32
 
 }
@@ -51,10 +51,10 @@ const_assert_size!(PartitionEntry, 16);
 pub struct MasterBootRecord {
     bootstrap: [u8; 436],
     id: [u8; 10],
-    partition_table_entry_1: PartitionEntry,
-    partition_table_entry_2: PartitionEntry,
-    partition_table_entry_3: PartitionEntry,
-    partition_table_entry_4: PartitionEntry,
+    pub partition_table_entry_1: PartitionEntry,
+    pub partition_table_entry_2: PartitionEntry,
+    pub partition_table_entry_3: PartitionEntry,
+    pub partition_table_entry_4: PartitionEntry,
     valid_bootsector: u16
 }
 
