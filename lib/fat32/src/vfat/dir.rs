@@ -5,6 +5,7 @@ use shim::const_assert_size;
 use shim::ffi::OsStr;
 use shim::io;
 use shim::newioerr;
+use shim::ioerr;
 
 use crate::traits;
 use crate::util::VecExt;
@@ -16,11 +17,14 @@ pub struct Dir<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     // FIXME: Fill me in.
     start_cluster: Cluster,
-    name: String,
-    metadata: Metadata
+    pub name: String,
+    pub size: usize,
+    pub metadata: Metadata
 }
 
-
+// impl<HANDLE: VFatHandle> Dir<HANDLE> {
+//     pub 
+// }
 
 pub struct EntryIter<HANDLE: VFatHandle> {
     vfat: HANDLE,
@@ -92,38 +96,60 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
             unknown = unsafe { dir_entry.unknown };
         }
         let reg_dir_entry = unsafe { dir_entry.regular };
-        // if the entry is a directory
-        if reg_dir_entry.attributes.is_dir() {
-            let mut final_name_string = String::new();
-            if long_name_bytes.is_empty() {
-                // this signifies the previous entry was the last entry or
-                // this is a deleted/unused entry
-                if reg_dir_entry.name[0] == 0x00 || reg_dir_entry.name[0] == 0xE5 {
-                    return None;
-                }
-                let name_string = EntryIter::build_string(&reg_dir_entry.name);
-                let extension_string = EntryIter::build_string(&reg_dir_entry.extension);
-                final_name_string.push_str(&name_string);
-                final_name_string.push_str(&extension_string);
-            } else {
-                let lfn_vec: Vec<u16> = core::char::decode_utf16(long_name_bytes.iter().cloned())
-                    .map(|r| r.map_err(|e| e.unpaired_surrogate()))
-                    .collect();
-                let lfn_string = String::from_utf16(&lfn_vec).expect("error decoding utf-16");
-                final_name_string.push_str(&lfn_string);
+
+        //these are the fields that File and Dir share 
+        let metadata;
+        let start_cluster;
+        let size;
+        let mut name = String::new();
+
+        if long_name_bytes.is_empty() {
+            // this signifies the previous entry was the last entry or
+            // this is a deleted/unused entry
+            if reg_dir_entry.name[0] == 0x00 || reg_dir_entry.name[0] == 0xE5 {
+                return None;
             }
-
-            // get the metadata and starting cluster  
-
+            let name_string = EntryIter::build_string(&reg_dir_entry.name);
+            let extension_string = EntryIter::build_string(&reg_dir_entry.extension);
+            name.push_str(&name_string);
+            name.push('.');
+            name.push_str(&extension_string);
         } else {
-            if long_name_bytes.is_empty() {
-            
-            } else {
-    
-            }
+            let lfn_vec: Vec<u16> = core::char::decode_utf16(long_name_bytes.iter().cloned())
+                .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+                .collect();
+            let lfn_string = String::from_utf16(&lfn_vec).expect("error decoding utf-16");
+            name.push_str(&lfn_string);
         }
 
+        // get the metadata and starting cluster  
+        metadata = reg_dir_entry.get_metadata();
+        start_cluster = reg_dir_entry.get_cluster();
+        size = reg_dir_entry.get_size() as usize;
+
+        // be sure to increment the iterator's pointer
         self.index += 1;
+
+        if reg_dir_entry.attributes.is_dir() {
+            let dir = Dir {
+                vfat: self.vfat,
+                start_cluster,
+                name,
+                size,
+                metadata
+            };
+            Some(Entry::Dir(dir))
+        } else {
+            let file = File {
+                vfat: self.vfat,
+                start_cluster,
+                name,
+                cursor: 0,
+                size,
+                metadata
+            };
+            Some(Entry::File(file))
+        }
     }
 
 }
@@ -157,8 +183,12 @@ impl VFatRegularDirEntry {
                 time: self.last_modification_timestamp.time, //this is not correct
                 date: self.last_accessed_date
             },
-
+            modified: self.last_modification_timestamp,
+            attributes: self.attributes
         }
+    }
+    pub fn get_size(&self) -> u32 {
+        self.file_size
     }
 }
 
@@ -207,10 +237,42 @@ impl<HANDLE: VFatHandle> Dir<HANDLE> {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry<HANDLE>> {
-        unimplemented!("Dir::find()")
+        let entries = traits::Dir::entries(self)?;
+        let name_as_str = name.as_ref().to_str().expect("Error converting OsStr to &str");
+        for entry in entries {
+            match entry {
+                Entry::File(file) => {
+                    if file.name.eq_ignore_ascii_case(name_as_str) {
+                        return Ok(entry);
+                    }
+                },
+                Entry::Dir(dir) => {
+                    if dir.name.eq_ignore_ascii_case(name_as_str) {
+                        return Ok(entry);
+                    }
+                }
+            }
+        }
+        ioerr!(NotFound, "No entry with name in directory")
     }
 }
 
 impl<HANDLE: VFatHandle> traits::Dir for Dir<HANDLE> {
     // FIXME: Implement `trait::Dir` for `Dir`.
+    type Entry = Entry<HANDLE>;
+
+    type Iter = EntryIter<HANDLE>;
+
+    fn entries(&self) -> io::Result<Self::Iter> {
+        let mut entries_as_bytes_buf = Vec::new();
+        let start_cluster = self.start_cluster;
+        self.vfat.lock(|fat| fat.read_chain(start_cluster, &mut entries_as_bytes_buf));
+        let dir_entries: Vec<VFatDirEntry> = unsafe{ entries_as_bytes_buf.cast() };
+
+        Ok(EntryIter {
+            vfat: self.vfat,
+            dir_entries,
+            index: 0
+        })
+    }
 }

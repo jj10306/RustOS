@@ -10,11 +10,11 @@ use crate::vfat::{Cluster, Metadata, VFatHandle};
 pub struct File<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     // FIXME: Fill me in.
-    first_cluster: Cluster,
-    name: String,
+    start_cluster: Cluster,
+    pub name: String,
     cursor: usize,
-    size: usize,
-    metadata: Metadata
+    pub size: usize,
+    pub metadata: Metadata
 }
 
 // FIXME: Implement `traits::File` (and its supertraits) for `File`.

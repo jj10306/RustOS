@@ -3,3 +3,4 @@ reminders
 - fix fat_entry, transmute problem
 - why tf does it say std::vec::Vec even when explicitly importing Vec and same with String
 - dir.rs fix the last accessed date timestamp to have the current time?
+- should you clone the vfat HANDLE when creating new structs?
