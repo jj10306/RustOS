@@ -18,12 +18,19 @@ pub struct Time(u16);
 #[repr(C, packed)]
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Attributes(u8);
-
+impl Attributes {
+    pub fn is_lfn(&self) -> bool {
+        !self.0 == 0
+    }
+    pub fn is_dir(&self) -> bool {
+        self.0 == 0x10
+    }
+}
 /// A structure containing a date and time.
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Timestamp {
-    pub date: Date,
     pub time: Time,
+    pub date: Date
 }
 
 /// Metadata for a directory entry.
