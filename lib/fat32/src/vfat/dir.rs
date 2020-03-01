@@ -239,7 +239,7 @@ impl<HANDLE: VFatHandle> Dir<HANDLE> {
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry<HANDLE>> {
         let entries = traits::Dir::entries(self)?;
         let name_as_str = name.as_ref().to_str().expect("Error converting OsStr to &str");
-        for entry in entries {
+        for entry in entries {a weeds
             match entry {
                 Entry::File(file) => {
                     if file.name.eq_ignore_ascii_case(name_as_str) {
