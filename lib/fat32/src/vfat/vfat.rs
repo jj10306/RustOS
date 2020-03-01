@@ -44,13 +44,11 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     {
         let mbr = MasterBootRecord::from(&mut device)?;
 
+        // consider changing to work if the first partition isnt FAT (loop over partition entries in MBR?)
         let start_of_partition = mbr.partition_table_entry_1.relative_sector as u64;
+        let bpb = BiosParameterBlock::from(&mut device, start_of_partition)?;
 
-
-        //consider changing to work if the first partition isnt FAT (loop over partition entries)
-        let bpb = BiosParameterBlock::from(&mut device, start_of_partition);
-
-        let BiosParameterBlock { total_logical_sectors: num_sectors, bytes_per_sector, sectors_per_cluster, sectors_per_FAT: sectors_per_fat, num_reserved_sectors, num_FATs, root_cluster_num, ..  } = bpb.expect("bpb corrupted");
+        let BiosParameterBlock { total_logical_sectors: num_sectors, total_logical_sectors_alt: num_sectors_alt, bytes_per_sector, sectors_per_cluster, sectors_per_FAT: sectors_per_fat, num_reserved_sectors, num_FATs, root_cluster_num, ..  } = bpb;
         // let num_sectors = bpb.total_logical_sectors;
         // let bytes_per_sector = bpb.bytes_per_sector;
         // let sectors_per_cluster = bpb.sectors_per_clsuter;
@@ -64,10 +62,16 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         // should it be: let fat_start_sector = start_of_partition + num_reserved_sectors;
         let fat_start_sector = num_reserved_sectors;
         let data_start_sector = fat_start_sector as u64 + (num_FATs as u32 * sectors_per_fat) as u64;
-
+        let num_logical_sectors = {
+            if num_sectors == 0 {
+                num_sectors_alt as u64
+            } else {
+                num_sectors as u64
+            }
+        };
         let partition = Partition { 
                                     start: start_of_partition, 
-                                    num_sectors: num_sectors as u64, 
+                                    num_sectors: num_logical_sectors, 
                                     sector_size: bytes_per_sector as u64
                                   };
 
@@ -92,7 +96,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     //
     //  * A method to read from an offset of a cluster into a buffer.
     //
-       fn read_cluster(
+       pub fn read_cluster(
            &mut self,
            cluster: Cluster,
            offset: usize,
@@ -111,7 +115,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             // either the buffers length or the remaining sectors in the cluster after offset
             let sectors_to_read = core::cmp::min(buf.len() / self.bytes_per_sector as usize, self.sectors_per_cluster as usize - offset);
         
-            let vec_buf = vec![0u8; sectors_to_read];
+            let vec_buf = vec![0u8; sectors_to_read * self.bytes_per_sector as usize];
             for sector in cluster_sector_number..cluster_sector_number + sectors_to_read as u64 {
                 let sector_slice = self.device.get(sector)?;
                 vec_buf.extend_from_slice(sector_slice);
@@ -125,7 +129,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     //  * A method to read all of the clusters chained from a starting cluster
     //    into a vector.
     //
-       fn read_chain(
+       pub fn read_chain(
            &mut self,
            start: Cluster,
            buf: &mut Vec<u8>
@@ -145,11 +149,11 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
                         curr_entry = self.fat_entry(curr)?;
                     },
                     Status::Eoc(_) => {
-                        self.read_into_chain_buffer(curr, buf)?;
+                        bytes_read += self.read_into_chain_buffer(curr, buf)?;
                         return Ok(bytes_read);
                     },
-                    _ => return ioerr!(Other, "Reserved or cluster or bad sector encountered in chain");
-                };
+                    _ => {return ioerr!(Other, "Reserved or cluster or bad sector encountered in chain");}
+                }
             }
         }
        }
@@ -172,17 +176,18 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
            // multiply cluster number by 4 (32 bits, 4 bytes) to get byte offset from start of FAT
             let fat_offset = (cluster.get_cluster_number() * 4) as u64;
             // convert offset to sectors and add that to the fat_start_sector to ignore reserved sectors
-            let fat_sec_num = self.fat_start_sector +  (fat_offset /  self.bytes_per_sector as u64);
+            let fat_sec_num = self.fat_start_sector +  (fat_offset / self.bytes_per_sector as u64);
             // good chance that the offset isn't perfectly a multiple of 'bytes_per_sector', so must get the remainder to get the offset from the sector number computer above
             let fat_entry_offset = (fat_offset % self.bytes_per_sector as u64) as usize;
             
             let fat_sec_slice = self.device.get(fat_sec_num)?;
             // let _:() = fat_sec_slice;
-            // let fat_entry_slice: &[u8; 4];
+            let arr = [0u8; 4];
+            let slice = &arr[..];
             let fat_entry_slice = &fat_sec_slice[fat_entry_offset..fat_entry_offset + 4];
             // let _:() = fat_entry_slice;
             unsafe {
-                Ok(&core::mem::transmute::<&[u8], &FatEntry>(fat_entry_slice))
+                Ok(&core::mem::transmute::<[u8; 4], &FatEntry>(arr))
             }
 
 

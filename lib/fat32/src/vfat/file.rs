@@ -9,9 +9,33 @@ use crate::vfat::{Cluster, Metadata, VFatHandle};
 pub struct File<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     // FIXME: Fill me in.
+    first_cluster: Cluster,
+    cursor: usize
 }
 
 // FIXME: Implement `traits::File` (and its supertraits) for `File`.
+impl<HANDLE: VFatHandle> traits::File for File<HANDLE> {
+    fn sync(&mut self) -> io::Result<()> {
+        unimplemented!("Read-only file system")
+    }
+    fn size(&self) -> u64 {
+        self.vfat.lock(|fat| fat.read_chain(self.first_cluster, &mut Vec::new())).expect("Error getting file size") as u64
+    }
+}
+impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let read_buf = Vec::new();
+        // let _:() = read_buf;
+        let read_bytes = self.vfat.lock(|fat| fat.read_chain(self.first_cluster, &mut read_buf)).expect("Error getting file size");
+        let buf_bytes = core::cmp::min(buf.len(), (read_buf.len() - self.cursor) as usize);
+        buf.copy_from_slice(&read_buf.as_slice()[self.cursor..self.cursor + buf_bytes]);
+
+        Ok(buf_bytes)
+    }
+}
+impl<HANDLE: VFatHandle> io::Write for File<HANDLE> {
+    
+}
 
 impl<HANDLE: VFatHandle> io::Seek for File<HANDLE> {
     /// Seek to offset `pos` in the file.
