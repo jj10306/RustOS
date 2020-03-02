@@ -9,15 +9,15 @@ use shim::io;
 use shim::ioerr;
 use shim::newioerr;
 use shim::path;
-use shim::path::Path;
+use shim::path::{Path, Component};
 
 use crate::mbr::MasterBootRecord;
 use crate::traits::{BlockDevice, FileSystem};
 
 use crate::util::SliceExt;
 use crate::vfat::{BiosParameterBlock, CachedPartition, Partition};
-// use crate::vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Status};
-use crate::vfat::{Error, Cluster, FatEntry, Status};
+use crate::vfat::{Cluster, Dir, Entry, Error, MetaData, FatEntry, File, Status};
+
 
 /// A generic trait that handles a critical section as a closure
 pub trait VFatHandle: Clone + Debug + Send + Sync {
@@ -110,12 +110,12 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             ioerr!(InvalidInput, "Offset must be <= to sectors per clusters")
         } else {
             // get the sector number for the starting sector of the cluster
-            let cluster_sector_number = cluster.sector_from_cluster(self.data_start_sector, self.sectors_per_cluster as u64);
+            let cluster_sector_number = cluster.sector_from_cluster(self.data_start_sector, self.sectors_per_cluster as u64) + offset as u64;
             // determine the limiting facot in how many sectors to read
             // either the buffers length or the remaining sectors in the cluster after offset
             let sectors_to_read = core::cmp::min(buf.len() / self.bytes_per_sector as usize, self.sectors_per_cluster as usize - offset);
         
-            let vec_buf = vec![0u8; sectors_to_read * self.bytes_per_sector as usize];
+            let mut vec_buf = vec![0u8; sectors_to_read * self.bytes_per_sector as usize];
             for sector in cluster_sector_number..cluster_sector_number + sectors_to_read as u64 {
                 let sector_slice = self.device.get(sector)?;
                 vec_buf.extend_from_slice(sector_slice);
@@ -159,7 +159,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
        }
        fn read_into_chain_buffer(&mut self, curr: Cluster, buf: &mut Vec<u8>) -> io::Result<usize> {
             let bytes_in_cluster = self.sectors_per_cluster as usize * self.bytes_per_sector as usize; 
-            let read_buf = vec![0u8; bytes_in_cluster];
+            let mut read_buf = vec![0u8; bytes_in_cluster];
             let bytes_read = self.read_cluster(curr, 0, read_buf.as_mut_slice())?;
             if bytes_read != bytes_in_cluster {
                 return ioerr!(Other, "bytes read don't match total bytes in cluster");
@@ -174,20 +174,17 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     //
        fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
            // multiply cluster number by 4 (32 bits, 4 bytes) to get byte offset from start of FAT
-            let fat_offset = (cluster.get_cluster_number() * 4) as u64;
+            let fat_offset = (cluster.get_cluster_number() * size_of::<FatEntry>() as u32) as u64;
             // convert offset to sectors and add that to the fat_start_sector to ignore reserved sectors
             let fat_sec_num = self.fat_start_sector +  (fat_offset / self.bytes_per_sector as u64);
             // good chance that the offset isn't perfectly a multiple of 'bytes_per_sector', so must get the remainder to get the offset from the sector number computer above
             let fat_entry_offset = (fat_offset % self.bytes_per_sector as u64) as usize;
             
             let fat_sec_slice = self.device.get(fat_sec_num)?;
-            // let _:() = fat_sec_slice;
-            let arr = [0u8; 4];
-            let slice = &arr[..];
-            let fat_entry_slice = &fat_sec_slice[fat_entry_offset..fat_entry_offset + 4];
-            // let _:() = fat_entry_slice;
+
             unsafe {
-                Ok(&core::mem::transmute::<[u8; 4], &FatEntry>(arr))
+                let fat_entries: &[FatEntry] = core::mem::transmute(fat_sec_slice);
+                Ok(&fat_entries[fat_entry_offset as usize])
             }
 
 
@@ -195,11 +192,40 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
 }
 
 impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
-    type File = crate::traits::Dummy;
-    type Dir = crate::traits::Dummy;
-    type Entry = crate::traits::Dummy;
+    type File = File<HANDLE>;
+    type Dir = Dir<HANDLE>;
+    type Entry = Entry<HANDLE>;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        unimplemented!("FileSystem::open()")
+        let root_dir_cluster = self.lock(|fat| fat.rootdir_cluster);
+        let root_dir = Dir {
+            vfat: self.clone(),
+            start_cluster: root_dir_cluster,
+            name: String::from("/"),
+            metadata: MetaData::new_root_meta()
+        };
+
+        let curr_dir = root_dir;
+        //skip '/'
+        let components = path.as_ref().components().next();
+        
+        for component in components {
+            match component {
+                Component::RootDir => continue,
+                Component::Prefix(_) => continue,
+                Component::Normal(string) => {
+                    
+                },
+                Component::CurDir => {
+
+                },
+                Component::ParentDir=> {
+
+                } 
+            }
+        }
+
+
+        unimplemented!("Open");
     }
 }

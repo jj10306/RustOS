@@ -10,9 +10,9 @@ use crate::vfat::{Cluster, Metadata, VFatHandle};
 pub struct File<HANDLE: VFatHandle> {
     pub vfat: HANDLE,
     // FIXME: Fill me in.
-    start_cluster: Cluster,
+    pub start_cluster: Cluster,
     pub name: String,
-    cursor: usize,
+    pub cursor: usize,
     pub size: usize,
     pub metadata: Metadata
 }
@@ -29,9 +29,9 @@ impl<HANDLE: VFatHandle> traits::File for File<HANDLE> {
 }
 impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let read_buf = Vec::new();
+        let mut read_buf = Vec::new();
         // let _:() = read_buf;
-        let read_bytes = self.vfat.lock(|fat| fat.read_chain(self.first_cluster, &mut read_buf)).expect("Error getting file size");
+        let read_bytes = self.vfat.lock(|fat| fat.read_chain(self.start_cluster, &mut read_buf)).expect("Error getting file size");
         let buf_bytes = core::cmp::min(buf.len(), (read_buf.len() - self.cursor) as usize);
         buf.copy_from_slice(&read_buf.as_slice()[self.cursor..self.cursor + buf_bytes]);
 

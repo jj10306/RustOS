@@ -9,18 +9,29 @@ use crate::traits;
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Date(u16);
 
+impl Date {
+    pub fn new(t: u16) -> Date {
+        Date(t)
+    }
+}
+
 /// Time as represented in FAT32 on-disk structures.
 #[repr(C, packed)]
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Time(u16);
 
+impl Time {
+    pub fn new(t: u16) -> Time {
+        Time(t)
+    }
+}
 /// File attributes as represented in FAT32 on-disk structures.
 #[repr(C, packed)]
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Attributes(u8);
 impl Attributes {
     pub fn is_lfn(&self) -> bool {
-        !self.0 == 0
+        self.0 == 0x0F
     }
     pub fn is_dir(&self) -> bool {
         self.0 == 0x10
@@ -32,14 +43,41 @@ pub struct Timestamp {
     pub time: Time,
     pub date: Date
 }
+impl Timestamp {
+    pub fn new(time: Time, date: Date) -> Timestamp {
+        Timestamp {
+            time,
+            date  
+        }
+    }
+}
 
 /// Metadata for a directory entry.
 #[derive(Default, Debug, Clone)]
 pub struct Metadata {
-    creation: Timestamp,
-    last_access: Timestamp,
-    modified: Timestamp,
-    attributes: Attributes
+    pub creation: Timestamp,
+    pub last_access: Timestamp,
+    pub modified: Timestamp,
+    pub attributes: Attributes
+}
+
+impl Metadata {
+    pub fn new(creation: Timestamp, last_access: Timestamp, modified: Timestamp, attributes: Attributes) -> Metadata {
+        Metadata {
+            creation,
+            last_access,
+            modified,
+            attributes
+        }
+    }
+    pub fn new_root_meta() -> Metadata {
+        Metadata {
+            creation: Timestamp::new(Time::new(0), Date::new(0)),
+            last_access: Timestamp::new(Time::new(0), Date::new(0)),
+            modified: Timestamp::new(Time::new(0), Date::new(0)),
+            attributes: Attributes(0x10)
+        }
+    }
 }
 
 // FIXME: Implement `traits::Timestamp` for `Timestamp`.

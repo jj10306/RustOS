@@ -18,7 +18,6 @@ pub struct Dir<HANDLE: VFatHandle> {
     // FIXME: Fill me in.
     start_cluster: Cluster,
     pub name: String,
-    pub size: usize,
     pub metadata: Metadata
 }
 
@@ -34,9 +33,8 @@ pub struct EntryIter<HANDLE: VFatHandle> {
 
 impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
     //adds utf-16 chars to the vector to create the name and returns the number of chars added 
-    fn build_long_name(vec: &mut Vec<u16>, lfn_dir_entry: VFatLfnDirEntry) -> u8 {
+    fn build_long_name_bytes(&self, vec: &mut Vec<u16>, lfn_dir_entry: VFatLfnDirEntry) -> u8 {
         let mut chars_added: u8 = 0;
-        let end_of_name = false;
         for &utf16_char in &lfn_dir_entry.name_chars_1 {
             if utf16_char == 0x00 as u16 || utf16_char == 0xFF {
                 return chars_added;
@@ -63,9 +61,14 @@ impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
         }
         chars_added
     }
+
+    // fn build_long_name_string(long_name_bytes: Vec<u16>) -> String {
+    //     String::from_utf16_lossy(&long_name_bytes)
+    // }
+
     //adds name/extension chars to the string to create the name and returns the number of chars added 
-    fn build_string(bytes: &[u8]) -> String {
-        let byte_vec = Vec::new();
+    fn build_string(&self, bytes: &[u8]) -> String {
+        let mut byte_vec = Vec::new();
         for &byte in bytes {
             if byte == 0x0 || byte == 0x20 {
                 break;
@@ -85,14 +88,27 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
         if self.index >= self.dir_entries.len() {
             return None;
         }
-        let mut dir_entry = self.dir_entries[self.index];
+        let mut dir_entry = &self.dir_entries[self.index];
         let mut unknown = unsafe { dir_entry.unknown };
-        let mut long_name_bytes: Vec<u16> = Vec::new();
+        let mut lfn_tuples: Vec<(u8, String)> = Vec::new();
+        let mut capture = false;
         while unknown.attributes.is_lfn() {
             let lfn_dir_entry = unsafe { dir_entry.long_filename };
-            let bytes_added = EntryIter::build_long_name(&mut long_name_bytes, lfn_dir_entry);
+            if !lfn_dir_entry.is_deleted() { 
+                //TODO check if it last entry 0x00
+                if lfn_dir_entry.is_start() { capture = true; }
+                else if lfn_dir_entry.is_end() { capture = false }
+
+                if capture {
+                    let mut long_name_bytes: Vec<u16> = Vec::new();
+                    let bytes_added: u8 = self.build_long_name_bytes(&mut long_name_bytes, lfn_dir_entry);
+                    let long_name_string = String::from_utf16_lossy(&long_name_bytes);
+                    lfn_tuples.push((lfn_dir_entry.sequence_number, long_name_string));
+                }
+             }
+
             self.index += 1;
-            dir_entry = self.dir_entries[self.index];
+            dir_entry = &self.dir_entries[self.index];
             unknown = unsafe { dir_entry.unknown };
         }
         let reg_dir_entry = unsafe { dir_entry.regular };
@@ -103,23 +119,24 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
         let size;
         let mut name = String::new();
 
-        if long_name_bytes.is_empty() {
+        if lfn_tuples.is_empty() {
             // this signifies the previous entry was the last entry or
             // this is a deleted/unused entry
             if reg_dir_entry.name[0] == 0x00 || reg_dir_entry.name[0] == 0xE5 {
                 return None;
             }
-            let name_string = EntryIter::build_string(&reg_dir_entry.name);
-            let extension_string = EntryIter::build_string(&reg_dir_entry.extension);
+            let name_string = self.build_string(&reg_dir_entry.name);
+            let extension_string = self.build_string(&reg_dir_entry.extension);
             name.push_str(&name_string);
+            //only add if extension exists
             name.push('.');
             name.push_str(&extension_string);
         } else {
-            let lfn_vec: Vec<u16> = core::char::decode_utf16(long_name_bytes.iter().cloned())
-                .map(|r| r.map_err(|e| e.unpaired_surrogate()))
-                .collect();
-            let lfn_string = String::from_utf16(&lfn_vec).expect("error decoding utf-16");
-            name.push_str(&lfn_string);
+            // transform tuple vec into the file name string
+            lfn_tuples.sort_by_key(|k| k.0);
+            let strings: Vec<String> = lfn_tuples.into_iter().map(|t| t.1).collect();
+            name = strings.join("")
+            //name.push_str(&lfn_string);
         }
 
         // get the metadata and starting cluster  
@@ -132,16 +149,15 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
 
         if reg_dir_entry.attributes.is_dir() {
             let dir = Dir {
-                vfat: self.vfat,
+                vfat: self.vfat.clone(),
                 start_cluster,
                 name,
-                size,
                 metadata
             };
             Some(Entry::Dir(dir))
         } else {
             let file = File {
-                vfat: self.vfat,
+                vfat: self.vfat.clone(),
                 start_cluster,
                 name,
                 cursor: 0,
@@ -206,6 +222,20 @@ pub struct VFatLfnDirEntry {
     lfn_zeros: u16,
     name_chars_3: [u16; 2]
 }
+impl VFatLfnDirEntry {
+    pub fn is_start(&self) -> bool {
+        let shifty = 0x1 << 5;
+        self.sequence_number & shifty == 0
+    }
+    pub fn is_end(&self) -> bool {
+        let shifty = 0x1 << 6;
+        self.sequence_number & shifty == 1
+    }
+    pub fn is_deleted(&self) -> bool {
+        self.sequence_number == 0xE5
+    }
+}
+
 
 const_assert_size!(VFatLfnDirEntry, 32);
 
@@ -237,10 +267,15 @@ impl<HANDLE: VFatHandle> Dir<HANDLE> {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry<HANDLE>> {
+
+
         let entries = traits::Dir::entries(self)?;
-        let name_as_str = name.as_ref().to_str().expect("Error converting OsStr to &str");
-        for entry in entries {a weeds
-            match entry {
+        let name_as_str = match name.as_ref().to_str() {
+            Some(name) => name,
+            None => {return ioerr!(InvalidInput, "Invalid UTF-8 chars");}
+        };
+        for entry in entries {
+            match &entry {
                 Entry::File(file) => {
                     if file.name.eq_ignore_ascii_case(name_as_str) {
                         return Ok(entry);
@@ -270,7 +305,7 @@ impl<HANDLE: VFatHandle> traits::Dir for Dir<HANDLE> {
         let dir_entries: Vec<VFatDirEntry> = unsafe{ entries_as_bytes_buf.cast() };
 
         Ok(EntryIter {
-            vfat: self.vfat,
+            vfat: self.vfat.clone(),
             dir_entries,
             index: 0
         })
