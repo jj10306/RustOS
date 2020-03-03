@@ -27,7 +27,7 @@ pub struct PartitionEntry {
     partition_type: u8,
     ending_chs: CHS,
     pub relative_sector: u32,
-    total_sectors: u32
+    pub total_sectors: u32
 
 }
 

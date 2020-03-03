@@ -223,7 +223,6 @@ fn hash_entry<T: Entry>(hash: &mut String, entry: &T) -> ::std::fmt::Result {
 
 fn hash_dir<T: Dir>(hash: &mut String, dir: T) -> Result<Vec<T::Entry>, ::std::fmt::Error> {
     let mut entries: Vec<_> = dir.entries().expect("entries interator").collect();
-
     entries.sort_by(|a, b| a.name().cmp(b.name()));
     for (i, entry) in entries.iter().enumerate() {
         if i != 0 {
@@ -256,222 +255,222 @@ fn test_root_entries() {
     assert_hash_eq!("mock 4 root directory", hash, hash_for!("root-entries-4"));
 }
 
-fn hash_dir_recursive<P: AsRef<Path>>(
-    hash: &mut String,
-    vfat: StdVFatHandle,
-    path: P,
-) -> ::std::fmt::Result {
-    use std::fmt::Write;
+    fn hash_dir_recursive<P: AsRef<Path>>(
+        hash: &mut String,
+        vfat: StdVFatHandle,
+        path: P,
+    ) -> ::std::fmt::Result {
+        use std::fmt::Write;
 
-    let path = path.as_ref();
-    let dir = vfat.open_dir(path).expect("directory");
-
-    write!(hash, "{}\n", path.display())?;
-    let entries = hash_dir(hash, dir)?;
-    if entries.iter().any(|e| e.is_dir()) {
-        hash.push_str("\n\n");
-    }
-
-    for entry in entries {
-        if entry.is_dir() && entry.name() != "." && entry.name() != ".." {
-            let path = path.join(entry.name());
-            hash_dir_recursive(hash, vfat.clone(), path)?;
+        let path = path.as_ref();
+        let dir = vfat.open_dir(path).expect("directory");
+        write!(hash, "{}\n", path.display())?;
+        let entries = hash_dir(hash, dir)?;
+        if entries.iter().any(|e| e.is_dir()) {
+            hash.push_str("\n\n");
         }
-    }
 
-    Ok(())
-}
-
-fn hash_dir_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> String {
-    let mut hash = String::new();
-    hash_dir_recursive(&mut hash, vfat, path).unwrap();
-    hash
-}
-
-#[test]
-fn test_all_dir_entries() {
-    let hash = hash_dir_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
-    assert_hash_eq!("mock 1 all dir entries", hash, hash_for!("all-entries-1"));
-
-    let hash = hash_dir_recursive_from(vfat_from_resource!("mock2.fat32.img"), "/");
-    assert_hash_eq!("mock 2 all dir entries", hash, hash_for!("all-entries-2"));
-
-    let hash = hash_dir_recursive_from(vfat_from_resource!("mock3.fat32.img"), "/");
-    assert_hash_eq!("mock 3 all dir entries", hash, hash_for!("all-entries-3"));
-
-    let hash = hash_dir_recursive_from(vfat_from_resource!("mock4.fat32.img"), "/");
-    assert_hash_eq!("mock 4 all dir entries", hash, hash_for!("all-entries-4"));
-}
-
-fn hash_file<T: File>(hash: &mut String, mut file: T) -> ::std::fmt::Result {
-    use crate::tests::rand::distributions::{Range, Sample};
-    use std::collections::hash_map::DefaultHasher;
-    use std::fmt::Write;
-    use std::hash::Hasher;
-
-    let mut rng = rand::thread_rng();
-    let mut range = Range::new(128, 8192);
-    let mut hasher = DefaultHasher::new();
-
-    let mut bytes_read = 0;
-    loop {
-        let mut buffer = vec![0; range.sample(&mut rng)];
-        match file.read(&mut buffer) {
-            Ok(0) => break,
-            Ok(n) => {
-                hasher.write(&buffer[..n]);
-                bytes_read += n as u64;
+        for entry in entries {
+            if entry.is_dir() && entry.name() != "." && entry.name() != ".." {
+                let path = path.join(entry.name());
+                hash_dir_recursive(hash, vfat.clone(), path)?;
             }
-            Err(e) => panic!("failed to read file: {:?}", e),
         }
+
+        Ok(())
     }
 
-    assert_eq!(
-        bytes_read,
-        file.size(),
-        "expected to read {} bytes (file size) but read {}",
-        file.size(),
-        bytes_read
-    );
+    fn hash_dir_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> String {
+        let mut hash = String::new();
+        hash_dir_recursive(&mut hash, vfat, path).unwrap();
+        hash
+    }
 
-    write!(hash, "{}", hasher.finish())
-}
+    #[test]
+    fn test_all_dir_entries() {
+        let hash = hash_dir_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
+        assert_hash_eq!("mock 1 all dir entries", hash, hash_for!("all-entries-1"));
 
-fn hash_files_recursive<P: AsRef<Path>>(
-    hash: &mut String,
-    vfat: StdVFatHandle,
-    path: P,
-) -> ::std::fmt::Result {
-    let path = path.as_ref();
-    let mut entries = vfat
-        .open_dir(path)
-        .expect("directory")
-        .entries()
-        .expect("entries interator")
-        .collect::<Vec<_>>();
+        let hash = hash_dir_recursive_from(vfat_from_resource!("mock2.fat32.img"), "/");
+        assert_hash_eq!("mock 2 all dir entries", hash, hash_for!("all-entries-2"));
 
-    entries.sort_by(|a, b| a.name().cmp(b.name()));
-    for entry in entries {
-        let path = path.join(entry.name());
-        if entry.is_file() && !entry.name().starts_with(".BC.T") {
-            use std::fmt::Write;
-            let file = entry.into_file().unwrap();
-            if file.size() < (1 << 20) {
-                write!(hash, "{}: ", path.display())?;
-                hash_file(hash, file).expect("successful hash");
-                hash.push('\n');
+        let hash = hash_dir_recursive_from(vfat_from_resource!("mock3.fat32.img"), "/");
+        assert_hash_eq!("mock 3 all dir entries", hash, hash_for!("all-entries-3"));
+
+        let hash = hash_dir_recursive_from(vfat_from_resource!("mock4.fat32.img"), "/");
+        assert_hash_eq!("mock 4 all dir entries", hash, hash_for!("all-entries-4"));
+    }
+
+    fn hash_file<T: File>(hash: &mut String, mut file: T) -> ::std::fmt::Result {
+        use crate::tests::rand::distributions::{Range, Sample};
+        use std::collections::hash_map::DefaultHasher;
+        use std::fmt::Write;
+        use std::hash::Hasher;
+
+        let mut rng = rand::thread_rng();
+        let mut range = Range::new(128, 8192);
+        let mut hasher = DefaultHasher::new();
+
+        let mut bytes_read = 0;
+        loop {
+            let mut buffer = vec![0; range.sample(&mut rng)];
+            match file.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(n) => {
+                    hasher.write(&buffer[..n]);
+                    bytes_read += n as u64;
+                }
+                Err(e) => panic!("failed to read file: {:?}", e),
             }
-        } else if entry.is_dir() && entry.name() != "." && entry.name() != ".." {
-            hash_files_recursive(hash, vfat.clone(), path)?;
         }
-    }
 
-    Ok(())
-}
-
-fn hash_files_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> String {
-    let mut hash = String::new();
-    hash_files_recursive(&mut hash, vfat, path).unwrap();
-    hash
-}
-
-#[test]
-fn test_mock1_files_recursive() {
-    let hash = hash_files_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
-    assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
-}
-
-#[test]
-fn test_mock2_files_recursive() {
-    let hash = hash_files_recursive_from(vfat_from_resource!("mock2.fat32.img"), "/");
-    assert_hash_eq!("mock 2 file hashes", hash, hash_for!("files-2-3-4"));
-}
-
-#[test]
-fn test_mock3_files_recursive() {
-    let hash = hash_files_recursive_from(vfat_from_resource!("mock3.fat32.img"), "/");
-    assert_hash_eq!("mock 3 file hashes", hash, hash_for!("files-2-3-4"));
-}
-
-#[test]
-fn test_mock4_files_recursive() {
-    let hash = hash_files_recursive_from(vfat_from_resource!("mock4.fat32.img"), "/");
-    assert_hash_eq!("mock 4 file hashes", hash, hash_for!("files-2-3-4"));
-}
-
-struct Shuffle<T: BlockDevice> {
-    device: T,
-    swap_address: u64,
-}
-
-// Swap two
-impl<T: BlockDevice> Shuffle<T> {
-    fn new(device: T, swap_address: u64) -> Self {
-        let sector_size = device.sector_size();
         assert_eq!(
-            swap_address / sector_size,
-            (swap_address + 63) / sector_size
+            bytes_read,
+            file.size(),
+            "expected to read {} bytes (file size) but read {}",
+            file.size(),
+            bytes_read
         );
 
-        Shuffle {
-            device,
-            swap_address,
+        write!(hash, "{}", hasher.finish())
+        // write!(hash, "{}", bytes_read)
+    }
+
+    fn hash_files_recursive<P: AsRef<Path>>(
+        hash: &mut String,
+        vfat: StdVFatHandle,
+        path: P,
+    ) -> ::std::fmt::Result {
+        let path = path.as_ref();
+        let mut entries = vfat
+            .open_dir(path)
+            .expect("directory")
+            .entries()
+            .expect("entries interator")
+            .collect::<Vec<_>>();
+
+        entries.sort_by(|a, b| a.name().cmp(b.name()));
+        for entry in entries {
+            let path = path.join(entry.name());
+            if entry.is_file() && !entry.name().starts_with(".BC.T") {
+                use std::fmt::Write;
+                let file = entry.into_file().unwrap();
+                if file.size() < (1 << 20) {
+                    write!(hash, "{}: ", path.display())?;
+                    hash_file(hash, file).expect("successful hash");
+                    hash.push('\n');
+                }
+            } else if entry.is_dir() && entry.name() != "." && entry.name() != ".." {
+                hash_files_recursive(hash, vfat.clone(), path)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn hash_files_recursive_from<P: AsRef<Path>>(vfat: StdVFatHandle, path: P) -> String {
+        let mut hash = String::new();
+        hash_files_recursive(&mut hash, vfat, path).unwrap();
+        hash
+    }
+
+    #[test]
+    fn test_mock1_files_recursive() {
+        let hash = hash_files_recursive_from(vfat_from_resource!("mock1.fat32.img"), "/");
+        assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
+    }
+
+    #[test]
+    fn test_mock2_files_recursive() {
+        let hash = hash_files_recursive_from(vfat_from_resource!("mock2.fat32.img"), "/");
+        assert_hash_eq!("mock 2 file hashes", hash, hash_for!("files-2-3-4"));
+    }
+
+    #[test]
+    fn test_mock3_files_recursive() {
+        let hash = hash_files_recursive_from(vfat_from_resource!("mock3.fat32.img"), "/");
+        assert_hash_eq!("mock 3 file hashes", hash, hash_for!("files-2-3-4"));
+    }
+
+    #[test]
+    fn test_mock4_files_recursive() {
+        let hash = hash_files_recursive_from(vfat_from_resource!("mock4.fat32.img"), "/");
+        assert_hash_eq!("mock 4 file hashes", hash, hash_for!("files-2-3-4"));
+    }
+
+    struct Shuffle<T: BlockDevice> {
+        device: T,
+        swap_address: u64,
+    }
+
+    // Swap two
+    impl<T: BlockDevice> Shuffle<T> {
+        fn new(device: T, swap_address: u64) -> Self {
+            let sector_size = device.sector_size();
+            assert_eq!(
+                swap_address / sector_size,
+                (swap_address + 63) / sector_size
+            );
+
+            Shuffle {
+                device,
+                swap_address,
+            }
+        }
+
+        fn swap_target_n(&self) -> u64 {
+            self.swap_address / self.sector_size()
+        }
+
+        fn swap_target_offset(&self) -> u64 {
+            self.swap_address % self.sector_size()
         }
     }
 
-    fn swap_target_n(&self) -> u64 {
-        self.swap_address / self.sector_size()
-    }
-
-    fn swap_target_offset(&self) -> u64 {
-        self.swap_address % self.sector_size()
-    }
-}
-
-impl<T: BlockDevice> BlockDevice for Shuffle<T> {
-    fn sector_size(&self) -> u64 {
-        self.device.sector_size()
-    }
-
-    fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
-        let bytes = self.device.read_sector(n, buf)?;
-        if n == self.swap_target_n() {
-            let offset = self.swap_target_offset() as usize;
-
-            let mut front = [0u8; 32];
-            front.copy_from_slice(&buf[offset..offset + 32]);
-            let mut rear = [0u8; 32];
-            rear.copy_from_slice(&buf[offset + 32..offset + 64]);
-
-            buf[offset..offset + 32].copy_from_slice(&rear);
-            buf[offset + 32..offset + 64].copy_from_slice(&front);
+    impl<T: BlockDevice> BlockDevice for Shuffle<T> {
+        fn sector_size(&self) -> u64 {
+            self.device.sector_size()
         }
-        Ok(bytes)
+
+        fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
+            let bytes = self.device.read_sector(n, buf)?;
+            if n == self.swap_target_n() {
+                let offset = self.swap_target_offset() as usize;
+
+                let mut front = [0u8; 32];
+                front.copy_from_slice(&buf[offset..offset + 32]);
+                let mut rear = [0u8; 32];
+                rear.copy_from_slice(&buf[offset + 32..offset + 64]);
+
+                buf[offset..offset + 32].copy_from_slice(&rear);
+                buf[offset + 32..offset + 64].copy_from_slice(&front);
+            }
+            Ok(bytes)
+        }
+
+        fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
+            let len = self.sector_size() as usize;
+            let mut new_buf = vec![0; len];
+            let buf = if n == self.swap_target_n() {
+                let offset = self.swap_target_offset() as usize;
+
+                new_buf.copy_from_slice(&buf[..len]);
+                new_buf[offset..offset + 32].copy_from_slice(&buf[offset + 32..offset + 64]);
+                new_buf[offset + 32..offset + 64].copy_from_slice(&buf[offset..offset + 32]);
+
+                &new_buf
+            } else {
+                buf
+            };
+            self.device.write_sector(n, buf)
+        }
     }
 
-    fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
-        let len = self.sector_size() as usize;
-        let mut new_buf = vec![0; len];
-        let buf = if n == self.swap_target_n() {
-            let offset = self.swap_target_offset() as usize;
+    #[test]
+    fn shuffle_test() {
+        let shuffle = Shuffle::new(resource!("mock1.fat32.img"), 0x896ca0);
+        let vfat = VFat::<StdVFatHandle>::from(shuffle).expect("failed to initialize VFAT from image");
 
-            new_buf.copy_from_slice(&buf[..len]);
-            new_buf[offset..offset + 32].copy_from_slice(&buf[offset + 32..offset + 64]);
-            new_buf[offset + 32..offset + 64].copy_from_slice(&buf[offset..offset + 32]);
-
-            &new_buf
-        } else {
-            buf
-        };
-        self.device.write_sector(n, buf)
+        let hash = hash_files_recursive_from(vfat, "/");
+        assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
     }
-}
-
-#[test]
-fn shuffle_test() {
-    let shuffle = Shuffle::new(resource!("mock1.fat32.img"), 0x896ca0);
-    let vfat = VFat::<StdVFatHandle>::from(shuffle).expect("failed to initialize VFAT from image");
-
-    let hash = hash_files_recursive_from(vfat, "/");
-    assert_hash_eq!("mock 1 file hashes", hash, hash_for!("files-1"));
-}

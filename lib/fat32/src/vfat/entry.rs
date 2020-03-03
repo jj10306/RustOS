@@ -28,7 +28,8 @@ impl<HANDLE: VFatHandle> traits::Entry for Entry<HANDLE> {
     /// The metadata associated with the entry.
     fn metadata(&self) -> &Self::Metadata {
         match self {
-            Entry::File(file) => &file.metadata,
+            Entry::File(file) => {
+                return &file.metadata;},
             Entry::Dir(dir) => &dir.metadata 
         }
     }

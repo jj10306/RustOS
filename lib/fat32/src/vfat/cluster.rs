@@ -13,6 +13,7 @@ impl Cluster {
         self.0
     }
     pub fn sector_from_cluster(&self, first_data_sector: u64, sec_per_cluster: u64) -> u64 {
+        if self.0 < 2 { return 0; }
         ((self.0 as u64 - 2) * sec_per_cluster + first_data_sector) 
     }
 }

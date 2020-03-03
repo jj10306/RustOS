@@ -135,10 +135,9 @@ impl CachedPartition {
             // virtual sector size should always be >= and a multiple of physical sector size
             let physical_sector_size = self.device.sector_size() as u64;
             // let mut physical_sector_buf = vec![0u8; physical_sector_size as usize];
-            let mut virtual_sector_buf = vec![0u8; self.partition.sector_size as usize];
-            // let mut bytes_read = 0;
+            let mut virtual_sector_buf = Vec::new();
             // better way to do this with a single vector
-            for physical_sector in starting_physical_sector..=ending_physical_sector {
+            for physical_sector in starting_physical_sector..ending_physical_sector {
                 // let next_slice = virtual_sector_buf.as_mut_slice()[bytes_read..bytes_read + physical_sector_size];
                 // bytes_read += self.device.read_sector(physical_sector, next_slice)? as u64;
                 self.device.read_all_sector(physical_sector, &mut virtual_sector_buf);
@@ -149,8 +148,7 @@ impl CachedPartition {
             self.cache.insert(sector, new_cache_entry);
             Ok(self.cache.get(&sector).unwrap().data.as_slice())
         }
-
-
+    }
 
         // if let Some(found_cache_entry) = self.cache.get(&physical_sector) {
         //     Ok(found_cache_entry.data.as_slice())
@@ -180,7 +178,7 @@ impl CachedPartition {
             //         Ok(&[0;2])
             //     }
             // }
-    }
+    // }
 }
 
 // FIXME: Implement `BlockDevice` for `CacheDevice`. The `read_sector` and

@@ -32,8 +32,9 @@ impl<HANDLE: VFatHandle> io::Read for File<HANDLE> {
         let mut read_buf = Vec::new();
         // let _:() = read_buf;
         let read_bytes = self.vfat.lock(|fat| fat.read_chain(self.start_cluster, &mut read_buf)).expect("Error getting file size");
-        let buf_bytes = core::cmp::min(buf.len(), (read_buf.len() - self.cursor) as usize);
-        buf.copy_from_slice(&read_buf.as_slice()[self.cursor..self.cursor + buf_bytes]);
+        let buf_bytes = core::cmp::min(buf.len(), (self.size  - self.cursor) as usize);
+        buf[..buf_bytes].copy_from_slice(&read_buf.as_slice()[self.cursor..self.cursor + buf_bytes]);
+        self.cursor += buf_bytes;
 
         Ok(buf_bytes)
     }
@@ -62,6 +63,7 @@ impl<HANDLE: VFatHandle> io::Seek for File<HANDLE> {
     /// Seeking before the start of a file or beyond the end of the file results
     /// in an `InvalidInput` error.
     fn seek(&mut self, _pos: SeekFrom) -> io::Result<u64> {
+        println!("in seek");
         let file_size = self.size;
         match _pos {
             SeekFrom::Start(seek) => {
@@ -69,6 +71,7 @@ impl<HANDLE: VFatHandle> io::Seek for File<HANDLE> {
                 if final_cursor < 0 || final_cursor >= file_size as u64 {
                     ioerr!(InvalidInput, "Seeked before the start or beyond the end of the file")
                 } else {
+                    self.cursor = final_cursor as usize;
                     Ok(final_cursor)
                 }
             },
@@ -77,6 +80,7 @@ impl<HANDLE: VFatHandle> io::Seek for File<HANDLE> {
                 if final_cursor < 0 || final_cursor >= file_size as i64 {
                     ioerr!(InvalidInput, "Seeked before the start or beyond the end of the file")
                 } else {
+                    self.cursor = final_cursor as usize;
                     Ok(final_cursor as u64)
                 }
             },
@@ -85,6 +89,7 @@ impl<HANDLE: VFatHandle> io::Seek for File<HANDLE> {
                 if final_cursor < 0 || final_cursor >= file_size as i64 {
                     ioerr!(InvalidInput, "Seeked before the start or beyond the end of the file")
                 } else {
+                    self.cursor = final_cursor as usize;
                     Ok(final_cursor as u64)
                 }
             }

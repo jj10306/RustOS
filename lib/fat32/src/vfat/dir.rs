@@ -21,9 +21,16 @@ pub struct Dir<HANDLE: VFatHandle> {
     pub metadata: Metadata
 }
 
-// impl<HANDLE: VFatHandle> Dir<HANDLE> {
-//     pub 
-// }
+impl<HANDLE: VFatHandle> Dir<HANDLE> {
+    pub fn new(vfat: HANDLE, start_cluster: Cluster, name: String) -> Dir<HANDLE> {
+        Dir {
+            vfat,
+            start_cluster,
+            name,
+            metadata: Metadata::new_root_meta()
+        }
+    }
+}
 
 pub struct EntryIter<HANDLE: VFatHandle> {
     vfat: HANDLE,
@@ -76,7 +83,9 @@ impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
                 byte_vec.push(byte);
             }
         }
-        String::from_utf8(byte_vec).expect("Error converting bytes to UTF-8 string")
+        // let s = String::from_utf8_lossy(byte_vec.as_slice());
+        // s.to_string()
+        String::from_utf8(byte_vec).unwrap()
 
     }
 }
@@ -122,14 +131,20 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
         if lfn_tuples.is_empty() {
             // this signifies the previous entry was the last entry or
             // this is a deleted/unused entry
-            if reg_dir_entry.name[0] == 0x00 || reg_dir_entry.name[0] == 0xE5 {
+            if reg_dir_entry.name[0] == 0x00  {
                 return None;
+            }
+            if reg_dir_entry.name[0] == 0xE5 {
+                self.index += 1;
+                return self.next();
             }
             let name_string = self.build_string(&reg_dir_entry.name);
             let extension_string = self.build_string(&reg_dir_entry.extension);
             name.push_str(&name_string);
             //only add if extension exists
-            name.push('.');
+            if reg_dir_entry.extension[0] != 0x00 && reg_dir_entry.extension[0] != 0x20 {
+                name.push('.');
+            }
             name.push_str(&extension_string);
         } else {
             // transform tuple vec into the file name string
@@ -146,7 +161,6 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
 
         // be sure to increment the iterator's pointer
         self.index += 1;
-
         if reg_dir_entry.attributes.is_dir() {
             let dir = Dir {
                 vfat: self.vfat.clone(),
@@ -178,10 +192,12 @@ pub struct VFatRegularDirEntry {
     attributes: Attributes,
     _reserved: u8,
     creation_time_tenths: u8,
-    creation_timestamp: Timestamp,
+    creation_time: Time,
+    creation_date: Date,
     last_accessed_date: Date,
     high_cluster_number_bits: u16,
-    last_modification_timestamp: Timestamp,
+    last_modification_time: Time,
+    last_modification_date: Date,
     low_cluster_number_bits: u16,
     file_size: u32
 }
@@ -189,19 +205,14 @@ pub struct VFatRegularDirEntry {
 impl VFatRegularDirEntry {
     pub fn get_cluster(&self) -> Cluster {
         let base = !0u32;
-        let cluster_num = (base & ((self.high_cluster_number_bits as u32) << 16u32)) & self.low_cluster_number_bits as u32; 
+        let cluster_num = (base & ((self.high_cluster_number_bits as u32) << 16u32)) + self.low_cluster_number_bits as u32; 
         Cluster::from(cluster_num)
     }
     pub fn get_metadata(&self) -> Metadata {
-        Metadata {
-            creation: self.creation_timestamp,
-            last_access: Timestamp {
-                time: self.last_modification_timestamp.time, //this is not correct
-                date: self.last_accessed_date
-            },
-            modified: self.last_modification_timestamp,
-            attributes: self.attributes
-        }
+        let creation_timestamp = Timestamp::new(self.creation_time, self.creation_date);
+        let accessed_timestamp = Timestamp::new(Time::new(0), self.last_accessed_date);
+        let modification_timestamp = Timestamp::new(self.last_modification_time, self.last_modification_date);
+        Metadata::new(creation_timestamp, accessed_timestamp, modification_timestamp, self.attributes)
     }
     pub fn get_size(&self) -> u32 {
         self.file_size
@@ -268,7 +279,6 @@ impl<HANDLE: VFatHandle> Dir<HANDLE> {
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry<HANDLE>> {
 
-
         let entries = traits::Dir::entries(self)?;
         let name_as_str = match name.as_ref().to_str() {
             Some(name) => name,
@@ -303,7 +313,6 @@ impl<HANDLE: VFatHandle> traits::Dir for Dir<HANDLE> {
         let start_cluster = self.start_cluster;
         self.vfat.lock(|fat| fat.read_chain(start_cluster, &mut entries_as_bytes_buf));
         let dir_entries: Vec<VFatDirEntry> = unsafe{ entries_as_bytes_buf.cast() };
-
         Ok(EntryIter {
             vfat: self.vfat.clone(),
             dir_entries,

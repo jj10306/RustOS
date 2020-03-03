@@ -34,20 +34,20 @@ impl Attributes {
         self.0 == 0x0F
     }
     pub fn is_dir(&self) -> bool {
-        self.0 == 0x10
+        (self.0 & 0x10) == 0x10
     }
 }
 /// A structure containing a date and time.
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Timestamp {
-    pub time: Time,
-    pub date: Date
+    pub date: Date,
+    pub time: Time
 }
 impl Timestamp {
     pub fn new(time: Time, date: Date) -> Timestamp {
         Timestamp {
-            time,
-            date  
+            date,
+            time
         }
     }
 }
@@ -86,40 +86,36 @@ impl traits::Timestamp for Timestamp {
     ///
     /// The year is not offset. 2009 is 2009.
     fn year(&self) -> usize {
-        let mask = 0b1111111 << 9;
-        (self.date.0 & mask) as usize
+        (self.date.0 >> 9) as usize + 1980
     }
 
     /// The calendar month, starting at 1 for January. Always in range [1, 12].
     ///
     /// January is 1, Feburary is 2, ..., December is 12.
     fn month(&self) -> u8 {
-        let mask = 0b1111 << 5;
-        (self.date.0 & mask) as u8
+        (self.date.0 >> 5 & 0b1111) as u8
     }
 
     /// The calendar day, starting at 1. Always in range [1, 31].
     fn day(&self) -> u8 {
-        let mask = 0b11111 << 0;
-        (self.date.0 & mask) as u8
+        // let mask = 0b11111 << 0;
+        // (self.date.0 & mask) as u8
+        (self.date.0 & 0b11111) as u8
     }
 
     /// The 24-hour hour. Always in range [0, 24).
     fn hour(&self) -> u8 {
-        let mask = 0b11111 << 11;
-        (self.time.0 & mask) as u8
+        (self.time.0 >> 11 & 0b11111) as u8
     }
 
     /// The minute. Always in range [0, 60).
     fn minute(&self) -> u8 {
-        let mask = 0b111111 << 5;
-        (self.time.0 & mask) as u8
+        (self.time.0 >> 5 & 0b111111) as u8
     }
 
     /// The second. Always in range [0, 60).
     fn second(&self) -> u8 {
-        let mask = 0b11111 << 0;
-        ((self.time.0 & mask) * 2) as u8
+        ((self.time.0 & 0b11111) * 2) as u8
     }
 }
 
@@ -136,7 +132,7 @@ impl traits::Metadata for Metadata {
     }
     /// Whether the entry should be "hidden" from directory traversals.
     fn hidden(&self) -> bool {
-        self.attributes.0 == 0x02
+        self.attributes.0 & 0x02 == 0x02
     }
     /// The timestamp when the entry was created.
     fn created(&self) -> Self::Timestamp {
