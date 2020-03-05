@@ -2,16 +2,19 @@ use shim::io;
 use shim::path::{Path, PathBuf};
 
 use stack_vec::StackVec;
-
+use alloc::vec::Vec;
 use pi::atags::Atags;
 
-// use fat32::traits::FileSystem;
-// use fat32::traits::{Dir, Entry};
+use fat32::traits::FileSystem;
+use fat32::traits::{Dir, Entry as EntryTrait, Metadata};
+use fat32::vfat::Entry;
 
 use crate::console::{kprint, kprintln, CONSOLE};
+use crate::fs::PiVFatHandle;
 use crate::ALLOCATOR;
-// use crate::FILESYSTEM;
+use crate::FILESYSTEM;
 
+use shim::io::Read;
 use core::time::Duration;
 use pi::timer::spin_sleep;
 use core::str::from_utf8;
@@ -55,17 +58,24 @@ impl<'a> Command<'a> {
     }
 }
 
+
+
+
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns.
 pub fn shell(prefix: &str) -> ! {
-    spin_sleep(Duration::new(8, 0));
+
+    let mut cwd = PathBuf::new();
+    cwd.push("/");
+
+
+    spin_sleep(Duration::new(5, 0));
+    
     kprintln!("a VERY warm welcome to ...");
     kprintln!("~~~~~~~~~~~~~~ JOS ~~~~~~~~~~~~~~");
-
     loop {
-
         kprint!("{}", prefix);
-
+        
         let a = &mut [0u8; 512];
         let mut input_buf = StackVec::new(a);  //should I be handling if the prefix is longer than one character?
         loop {
@@ -78,11 +88,7 @@ pub fn shell(prefix: &str) -> ! {
                         let arg_buf = &mut [""; 64]; //slice that the arguments will be put into
                         match Command::parse(res, arg_buf) {
                             Ok(command) => {
-                                let command_path = command.path();
-                                match command_path {
-                                    "echo" => echo(& command.args.as_slice()[1..]),
-                                    _ => kprintln!("unknown command: ${}", command_path)
-                                }
+                                invoke_appropriate_command(command, &mut cwd);
                             },
                             Err(Error::Empty) => {
                                 kprintln!();
@@ -130,12 +136,66 @@ pub fn shell(prefix: &str) -> ! {
 //helper functions for my shell() function
 
 
+fn invoke_appropriate_command(command: Command, cwd: &mut PathBuf) {
+    let command_path = command.path();
+    let command_args = & command.args.as_slice()[1..];
+    match command_path {
+        "echo" => echo(command_args),
+        "ls" => ls(command_args, cwd),
+        // "cat" => cat(command_args),
+        // "pwd" => pwd(command_args),
+        // "cd" => cd(command_args),
+        _ => kprintln!("unknown command: ${}", command_path)
+    }
+}
+
+
+//my aresenal of commands lives down here
 fn echo(args: & [&str]) {
     for s in args {
         kprint!("{} ", s);
     }
     kprintln!();
 }
+fn ls(args: & [&str], cwd: &mut PathBuf) {
+    if args.len() == 0 {
+        //current directory
+        match get_entries(cwd, false) {
+            Ok(entries) => {
+                entries.into_iter().for_each(|x| kprint!("{}\t", x.name()));
+                kprintln!();
+            },
+            Err(_) => kprintln!("No such directory")
+        };
+    } else if args.len() == 1 {
+        //specified directory
+    } else if args.len() == 2 {
+        //flag and specified directory
+        if args[0] == "-a" {
+            //display all 
+        } else {
+            kprintln!("Only the '-a' flag is supported currently!");
+        } 
+    } else {
+        kprintln!("Only the '-a' flag is supported currently!");
+    }
+}
+
+
+//TODO: Add support for ls-ing a file (return vector of length 1)
+fn get_entries(cwd: &mut PathBuf, show_hidden: bool) -> io::Result<Vec<Entry<PiVFatHandle>>> {
+    let dir = FILESYSTEM.open(cwd.clone())?;
+    let mut entries = dir.into_dir().unwrap().entries().unwrap();
+    let filtered_entries = entries.filter(|entry| show_hidden || !entry.metadata().hidden());
+    let mut entry_vec = Vec::new();
+    for entry in filtered_entries {
+        let name = entry.name();
+        entry_vec.push(entry);
+    }
+    Ok(entry_vec)
+}
+
+//helper functions for displaying correct characters
 fn is_visible_ascii(ascii_value: u8) -> bool {
     ascii_value >= 32 && ascii_value <= 127
 }

@@ -42,7 +42,7 @@ impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
     //adds utf-16 chars to the vector to create the name and returns the number of chars added 
     fn build_long_name_bytes(&self, vec: &mut Vec<u16>, lfn_dir_entry: VFatLfnDirEntry) -> u8 {
         let mut chars_added: u8 = 0;
-        for &utf16_char in &lfn_dir_entry.name_chars_1 {
+        for &utf16_char in &{lfn_dir_entry.name_chars_1} {
             if utf16_char == 0x00 as u16 || utf16_char == 0xFF {
                 return chars_added;
             } else {
@@ -50,7 +50,7 @@ impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
                 chars_added += 1;
             }
         }
-        for &utf16_char in &lfn_dir_entry.name_chars_2 {
+        for &utf16_char in &{lfn_dir_entry.name_chars_2} {
             if utf16_char == 0x00 as u16 || utf16_char == 0xFF {
                 return chars_added;
             } else {
@@ -58,7 +58,7 @@ impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
                 chars_added += 1;
             }
         }
-        for &utf16_char in &lfn_dir_entry.name_chars_3 {
+        for &utf16_char in &{lfn_dir_entry.name_chars_3} {
             if utf16_char == 0x00 as u16 || utf16_char == 0xFF {
                 return chars_added;
             } else {
@@ -95,13 +95,16 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.dir_entries.len() {
+            panic!("{}", self.index);
             return None;
         }
         let mut dir_entry = &self.dir_entries[self.index];
         let mut unknown = unsafe { dir_entry.unknown };
-        let mut lfn_tuples: Vec<(u8, String)> = Vec::new();
+        let mut lfn_tuples: Vec<(usize, String)> = Vec::new();
         let mut capture = false;
         while unknown.attributes.is_lfn() {
+            
+            
             let lfn_dir_entry = unsafe { dir_entry.long_filename };
             if !lfn_dir_entry.is_deleted() { 
                 //TODO check if it last entry 0x00
@@ -110,16 +113,18 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
 
                 if capture {
                     let mut long_name_bytes: Vec<u16> = Vec::new();
-                    let bytes_added: u8 = self.build_long_name_bytes(&mut long_name_bytes, lfn_dir_entry);
+                    
+                    let bytes_added: usize = self.build_long_name_bytes(&mut long_name_bytes, lfn_dir_entry) as usize;
+                    // panic!("{:?}", self.index);
                     let long_name_string = String::from_utf16_lossy(&long_name_bytes);
-                    lfn_tuples.push((lfn_dir_entry.sequence_number, long_name_string));
+                    lfn_tuples.push((lfn_dir_entry.sequence_number as usize, long_name_string));
                 }
              }
-
             self.index += 1;
             dir_entry = &self.dir_entries[self.index];
             unknown = unsafe { dir_entry.unknown };
         }
+    
         let reg_dir_entry = unsafe { dir_entry.regular };
 
         //these are the fields that File and Dir share 
@@ -129,6 +134,7 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
         let mut name = String::new();
 
         if lfn_tuples.is_empty() {
+            
             // this signifies the previous entry was the last entry or
             // this is a deleted/unused entry
             if reg_dir_entry.name[0] == 0x00  {
@@ -150,7 +156,10 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
             // transform tuple vec into the file name string
             lfn_tuples.sort_by_key(|k| k.0);
             let strings: Vec<String> = lfn_tuples.into_iter().map(|t| t.1).collect();
-            name = strings.join("")
+            for s in strings{
+                name.push_str(s.as_str());
+            }
+
             //name.push_str(&lfn_string);
         }
 
@@ -167,7 +176,10 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
                 start_cluster,
                 name,
                 metadata
-            };
+            };            
+            if self.index == 0 {
+                panic!("{:?}", dir);
+            }
             Some(Entry::Dir(dir))
         } else {
             let file = File {
@@ -178,6 +190,9 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
                 size,
                 metadata
             };
+            if self.index == 0 {
+                panic!("{:?}", file);
+            }
             Some(Entry::File(file))
         }
     }

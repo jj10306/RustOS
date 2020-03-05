@@ -1,3 +1,5 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 use core::alloc::Layout;
 use core::fmt;
 use core::ptr;
@@ -151,3 +153,9 @@ impl LocalAlloc for Allocator {
 }
 
 // FIXME: Implement `Debug` for `Allocator`.
+impl fmt::Debug for Allocator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Global Pool Current: {}, Global Pool End: {}, Bins: {:?}", self.gloabl_pool_current, self.gloabl_pool_end, self.bins)
+
+    }
+}

@@ -16,10 +16,9 @@ extern crate alloc;
 
 pub mod allocator;
 pub mod console;
-// pub mod fs;
+pub mod fs;
 pub mod mutex;
 pub mod shell;
-
 
 
 
@@ -37,35 +36,36 @@ use core::fmt::Write;
 use shell::shell;
 use console::kprintln;
 
+
 use pi::atags::Atags;
 
 use allocator::Allocator;
-// use fs::FileSystem;
+use fs::FileSystem;
 
-// use alloc::vec::Vec;
+
+
+
+
+use alloc::vec::Vec;
 use alloc::string::String;
 
 #[cfg_attr(not(test), global_allocator)]
 pub static ALLOCATOR: Allocator = Allocator::uninitialized();
-// pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
+pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 
 fn kmain() -> ! {
  
     spin_sleep(Duration::from_millis(1000));
-    // let a: Option<()> = None;
-    // let b = a.unwrap();
-    let mut atags = Atags::get();
-    for atag in atags {
-        kprintln!("{:#?}", atag);
-    }
-    let s = String::from("hey");
+
+
     unsafe {
-        // ALLOCATOR.initialize();
-        // FILESYSTEM.initialize();
+        ALLOCATOR.initialize();
+        FILESYSTEM.initialize();
     }
-    // let a: Option<u32> = None;
-    // let b = a.unwrap();
-    shell("gunna ");
+    
+
+
+    shell("=> ");
 }
 
 

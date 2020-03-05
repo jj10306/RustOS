@@ -59,7 +59,7 @@ impl<HANDLE: VFatHandle> traits::Entry for Entry<HANDLE> {
             Entry::Dir(dir) => None
         }
     }
-
+    
     /// If `self` is a directory, returns `Some` of the directory. Otherwise
     /// returns `None`.
     fn into_dir(self) -> Option<Dir<HANDLE>> {

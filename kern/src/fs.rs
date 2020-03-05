@@ -57,9 +57,24 @@ impl FileSystem {
     ///
     /// Panics if the underlying disk or file sytem failed to initialize.
     pub unsafe fn initialize(&self) {
-        unimplemented!("FileSystem::initialize()")
+        let sd = Sd::new().expect("Error initializing SD");
+        let vfat = VFat::from(sd).expect("Error initializing VFat");
+        *self.0.lock() = Some(PiVFatHandle::from(vfat)); 
+        
     }
 }
 
 // FIXME: Implement `fat32::traits::FileSystem` for `&FileSystem`
-impl fat32::traits::FileSystem for &FileSystem {}
+impl fat32::traits::FileSystem for &FileSystem {
+    type File = File<PiVFatHandle>;
+
+    type Dir = Dir<PiVFatHandle>;
+
+    type Entry = Entry<PiVFatHandle>;
+
+    fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
+
+       let a = self.0.lock().as_ref().unwrap().open(path);
+       a
+    }
+}

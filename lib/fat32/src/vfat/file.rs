@@ -1,4 +1,5 @@
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use shim::io::{self, SeekFrom};
 use shim::ioerr;
@@ -63,7 +64,6 @@ impl<HANDLE: VFatHandle> io::Seek for File<HANDLE> {
     /// Seeking before the start of a file or beyond the end of the file results
     /// in an `InvalidInput` error.
     fn seek(&mut self, _pos: SeekFrom) -> io::Result<u64> {
-        println!("in seek");
         let file_size = self.size;
         match _pos {
             SeekFrom::Start(seek) => {

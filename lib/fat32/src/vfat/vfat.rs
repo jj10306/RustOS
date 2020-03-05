@@ -3,6 +3,7 @@ use core::marker::PhantomData;
 use core::mem::size_of;
 
 use alloc::vec::Vec;
+use alloc::string::String;
 
 use shim::const_assert_size;
 use shim::io;
@@ -57,7 +58,6 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         // let num_FATs = bpb.num_FATs;
         // let root_dir_cluster = bpb.root_dir_cluster;
 
-        println!("{}, {}", sectors_per_cluster, bytes_per_sector);
         //should these be relative to the start of the partition or the start of the disk itself, in other words
         // should it be: let fat_start_sector = start_of_partition + num_reserved_sectors;
         let fat_start_sector = num_reserved_sectors;
@@ -111,7 +111,6 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             ioerr!(InvalidInput, "Offset must be <= to sectors per clusters")
         } else {
             // get the sector number for the starting sector of the cluster
-            // println!("{:?}", cluster);
             let cluster_sector_number = cluster.sector_from_cluster(self.data_start_sector, self.sectors_per_cluster as u64) + offset as u64;  
             // determine the limiting factor in how many sectors to read
             // either the buffers length or the remaining sectors in the cluster after offset
@@ -189,7 +188,8 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
             let fat_sec_slice = self.device.get(fat_sec_num)?;
 
             unsafe {
-                let fat_entries: &[FatEntry] = core::mem::transmute(fat_sec_slice);
+                // let fat_entries: &[FatEntry] = core::mem::transmute(fat_sec_slice);
+                let fat_entries: &[FatEntry] = fat_sec_slice.cast() ;
                 Ok(&fat_entries[fat_entry_offset as usize / size_of::<FatEntry>()])
             }
     // let entries_per_fat = self.bytes_per_sector as u64 / size_of::<FatEntry>() as u64;
@@ -211,12 +211,11 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
     type Entry = Entry<HANDLE>;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-    
+        
         let root_dir_cluster = self.lock(|fat| fat.rootdir_cluster);
 
         let root_dir = Dir::new(self.clone(), root_dir_cluster, String::from("/"));
         let mut entry = Entry::Dir(root_dir);
-
         let mut components = path.as_ref().components();
         let mut component = components.next();
         //skip root dir '/'
@@ -243,8 +242,12 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
             }
             component = components.next();
         }
-
-        Ok(entry)
+        let b = true;
+        let a = Ok(entry);
+        // if b == true {
+        //     panic!("{}", 1);
+        // }
+        a
 
 
 

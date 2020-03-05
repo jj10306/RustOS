@@ -4,7 +4,7 @@ mod util;
 mod bin;
 mod bump;
 
-type AllocatorImpl = bump::Allocator;
+type AllocatorImpl = bin::Allocator;
 
 #[cfg(test)]
 mod tests;
@@ -101,12 +101,12 @@ pub fn memory_map() -> Option<(usize, usize)> {
     // unimplemented!("memory map")
 }
 
-// impl fmt::Debug for Allocator {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match self.0.lock().as_mut() {
-//             Some(ref alloc) => write!(f, "{:?}", alloc)?,
-//             None => write!(f, "Not yet initialized")?,
-//         }
-//         Ok(())
-//     }
-// }
+impl fmt::Debug for Allocator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0.lock().as_mut() {
+            Some(ref alloc) => write!(f, "{:?}", alloc)?,
+            None => write!(f, "Not yet initialized")?,
+        }
+        Ok(())
+    }
+}

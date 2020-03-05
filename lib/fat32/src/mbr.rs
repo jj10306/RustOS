@@ -94,11 +94,13 @@ impl MasterBootRecord {
     /// Returns `UnknownBootIndicator(n)` if partition `n` contains an invalid
     /// boot indicator. Returns `Io(err)` if the I/O error `err` occured while
     /// reading the MBR.
-    pub fn from<T: BlockDevice>(mut device: T) -> Result<MasterBootRecord, Error> {
+   pub fn from<T: BlockDevice>(mut device: T) -> Result<MasterBootRecord, Error> {
         let buf = &mut [0u8; 512];
         if let Err(e) = device.read_sector(0, buf) {
             return Err(Error::Io(e));
         }
+        // let mbr = unsafe{ core::mem::transmute::<[u8; 512], MasterBootRecord>(*buf) };
+        // let dir_entries: Vec<VFatDirEntry> = unsafe{ entries_as_bytes_buf.cast() };
         let mbr = unsafe{ core::mem::transmute::<[u8; 512], MasterBootRecord>(*buf) };
 
         if mbr.valid_bootsector != 0xAA55 {
