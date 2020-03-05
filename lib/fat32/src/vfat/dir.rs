@@ -95,7 +95,6 @@ impl<HANDLE: VFatHandle> Iterator for EntryIter<HANDLE> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.dir_entries.len() {
-            panic!("{}", self.index);
             return None;
         }
         let mut dir_entry = &self.dir_entries[self.index];

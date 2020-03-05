@@ -1,12 +1,14 @@
 use shim::io;
 use shim::path::{Path, PathBuf};
 
+
 use stack_vec::StackVec;
 use alloc::vec::Vec;
+use alloc::string::String;
 use pi::atags::Atags;
 
 use fat32::traits::FileSystem;
-use fat32::traits::{Dir, Entry as EntryTrait, Metadata};
+use fat32::traits::{Dir, Entry as EntryTrait, Metadata, Timestamp};
 use fat32::vfat::Entry;
 
 use crate::console::{kprint, kprintln, CONSOLE};
@@ -74,7 +76,7 @@ pub fn shell(prefix: &str) -> ! {
     kprintln!("a VERY warm welcome to ...");
     kprintln!("~~~~~~~~~~~~~~ JOS ~~~~~~~~~~~~~~");
     loop {
-        kprint!("{}", prefix);
+        kprint!("jakob@cs3210:{:?}{} ", cwd, prefix);
         
         let a = &mut [0u8; 512];
         let mut input_buf = StackVec::new(a);  //should I be handling if the prefix is longer than one character?
@@ -158,21 +160,34 @@ fn echo(args: & [&str]) {
     kprintln!();
 }
 fn ls(args: & [&str], cwd: &mut PathBuf) {
+    let mut path = PathBuf::new();
+    let show_hidden;
     if args.len() == 0 {
         //current directory
-        match get_entries(cwd, false) {
-            Ok(entries) => {
-                entries.into_iter().for_each(|x| kprint!("{}\t", x.name()));
-                kprintln!();
-            },
-            Err(_) => kprintln!("No such directory")
-        };
+        show_hidden = false;
+        path = cwd.clone();
+        let entries = get_entries(&mut path, show_hidden);
+        display_entries(entries);
     } else if args.len() == 1 {
         //specified directory
+        if args[0] == "-a" {
+            show_hidden = true;
+            path = cwd.clone();
+        } else {
+            show_hidden = false;
+            path = construct_path(args[0], cwd);
+        }
+        let entries = get_entries(&mut path, show_hidden);
+        display_entries(entries);
     } else if args.len() == 2 {
         //flag and specified directory
         if args[0] == "-a" {
             //display all 
+            show_hidden = true;
+            path = construct_path(args[1], cwd);
+            let entries = get_entries(&mut path, show_hidden);
+            display_entries(entries);
+
         } else {
             kprintln!("Only the '-a' flag is supported currently!");
         } 
@@ -184,16 +199,99 @@ fn ls(args: & [&str], cwd: &mut PathBuf) {
 
 //TODO: Add support for ls-ing a file (return vector of length 1)
 fn get_entries(cwd: &mut PathBuf, show_hidden: bool) -> io::Result<Vec<Entry<PiVFatHandle>>> {
-    let dir = FILESYSTEM.open(cwd.clone())?;
-    let mut entries = dir.into_dir().unwrap().entries().unwrap();
-    let filtered_entries = entries.filter(|entry| show_hidden || !entry.metadata().hidden());
+    kprintln!("{:?}", cwd);
+    let entry = FILESYSTEM.open(cwd.clone())?;
     let mut entry_vec = Vec::new();
-    for entry in filtered_entries {
-        let name = entry.name();
+    if entry.is_dir() {
+        let mut entries = entry.into_dir().unwrap().entries().unwrap();
+        let filtered_entries = entries.filter(|entry| show_hidden || !entry.metadata().hidden());
+        for entry in filtered_entries {
+            entry_vec.push(entry);
+        }
+    } else {
         entry_vec.push(entry);
     }
+    
     Ok(entry_vec)
 }
+fn display_entries(entries: io::Result<Vec<Entry<PiVFatHandle>>>) {
+    match entries {
+        Ok(entries) => {
+            entries.into_iter().for_each(|x| {
+                let mut output_string = String::new();
+                format_output(&mut output_string, &x);
+                kprintln!("{}", output_string);
+            });
+            // entries.into_iter().for_each(|x| kprint!("{}\t", x.name()));
+        },
+        Err(e) => kprintln!("No such directory,{:?}", e)
+    }
+}
+
+fn format_output<T: EntryTrait>(formatted_output: &mut String, entry: &T) -> ::core::fmt::Result {
+    use core::fmt::Write;
+
+    fn write_bool(to: &mut String, b: bool, c: char) -> ::core::fmt::Result {
+        if b {
+            write!(to, "{}", c)
+        } else {
+            write!(to, "-")
+        }
+    }
+    
+    fn write_timestamp<T: Timestamp>(to: &mut String, ts: T) -> ::core::fmt::Result {
+        write!(
+            to,
+            "{:02}/{:02}/{} {:02}:{:02}:{:02} ",
+            ts.month(),
+            ts.day(),
+            ts.year(),
+            ts.hour(),
+            ts.minute(),
+            ts.second()
+        )
+    }
+    
+    write_bool(formatted_output, entry.is_dir(), 'd')?;
+    write_bool(formatted_output, entry.is_file(), 'f')?;
+    write_bool(formatted_output, entry.metadata().read_only(), 'r')?;
+    write_bool(formatted_output, entry.metadata().hidden(), 'h')?;
+    write!(formatted_output, "\t")?;
+    
+    write_timestamp(formatted_output, entry.metadata().created())?;
+    write_timestamp(formatted_output, entry.metadata().modified())?;
+    write_timestamp(formatted_output, entry.metadata().accessed())?;
+    write!(formatted_output, "\t")?;
+    
+    write!(formatted_output, "{}", entry.name())?;
+
+    Ok(())
+}
+
+// takes a 'destination path' and returns the appropriate path depending on if the destination was absolute or relative
+fn construct_path(dest: &str, cwd: &mut PathBuf) -> PathBuf {
+    let mut path = PathBuf::new();
+    path.push(dest);
+    if path.is_relative() {
+        path = PathBuf::new();
+        path.push(cwd);
+        path.push(dest);
+    }
+    path
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //helper functions for displaying correct characters
 fn is_visible_ascii(ascii_value: u8) -> bool {

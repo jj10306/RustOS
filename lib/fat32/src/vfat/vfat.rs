@@ -221,7 +221,7 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
         //skip root dir '/'
         match component.expect("Oops iterator") {
             Component::RootDir => {component = components.next();},
-            _ => {panic!("ahhhh should be root");}
+            _ => {return ioerr!(Other, "Expected root, found something else") ;}
         }
         while component.is_some() {
             let component_string = match component.unwrap() {
@@ -236,20 +236,14 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
             match entry {
                 Entry::Dir(dir) => {entry = Entry::Dir(dir);},
                 Entry::File(_) => { 
-                    panic!("why you here");
+                    if components.next() == None {
+                        break;
+                    }
                     return ioerr!(NotFound, "Invalid path");
             }
             }
             component = components.next();
         }
-        let b = true;
-        let a = Ok(entry);
-        // if b == true {
-        //     panic!("{}", 1);
-        // }
-        a
-
-
-
+        Ok(entry)
     }
 }
