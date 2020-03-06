@@ -45,7 +45,7 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
     {
         let mbr = MasterBootRecord::from(&mut device)?;
 
-        // consider changing to work if the first partition isnt FAT (loop over partition entries in MBR?)
+        // consider changing  to work if the first partition isnt FAT (loop over partition entries in MBR?)
         let start_of_partition;
         if mbr.partition_table_entry_1.partition_type == 0xB || mbr.partition_table_entry_1.partition_type == 0xC {
             start_of_partition = mbr.partition_table_entry_1.relative_sector as u64;
