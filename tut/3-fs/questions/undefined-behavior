@@ -1,0 +1,2 @@
+Unrelated to the Rust API, I found that sometime I was getting files/directories with cluster number
+0 and 1, even though the documentation says that these are reserved clusters

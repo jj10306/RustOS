@@ -1,0 +1,2 @@
+- Since other languages don't enforce the same rules, there is no gurantee, and likely there are 
+issues, that the foreign code will no have bugs that cause bugs and/or UB

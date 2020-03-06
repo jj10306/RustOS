@@ -1,0 +1,1 @@
+- This alignment is necessary becasuse most modern processors require 8 or 16 byte aligned addresses depending on the architecture

@@ -1,0 +1,2 @@
+- It is because being able to store the 'data' in the node is imperative in this situation since we are writing a memory allocator. 
+If we chose a normal linked list, we would be attempting to allocate space on the heap for the nodes, but we are implementing the heap!

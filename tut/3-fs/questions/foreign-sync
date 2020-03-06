@@ -1,0 +1,4 @@
+- I don't think it is thread-safe because if multiple threads are accessing the code, they all have the
+oppurtunity to cause an SD card error and thus mutate the value, causing data races. On the other hand,
+I don't think it would be possible for multiple threads to all be accessing the SD card code simultaneously due
+to the nature of it being an Sd card

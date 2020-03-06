@@ -1,0 +1,2 @@
+- A request for heap memory comes in (ie use of Vec or String), the size of the request and alignment necessary 
+are determined, and then these appropriate parameters are passed to the bump::Allocator::alloc() method

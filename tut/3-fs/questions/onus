@@ -1,0 +1,2 @@
+- Putting the onus on the caller reduces the overhead/bookkeeping associated with each allocation
+because know the allocating system doesn't have to keep track of the size of the block

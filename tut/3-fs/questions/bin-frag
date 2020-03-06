@@ -1,0 +1,2 @@
+1. I could coalesce adjacent blocks that are freed 
+2. I could implement a better algorithm for redistributing the leftover of excess chunks

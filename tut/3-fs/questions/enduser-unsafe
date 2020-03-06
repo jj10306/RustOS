@@ -1,0 +1,3 @@
+- The benefit is now that you reap all the flexibility and benefits associated with unsafe code, but
+you expose a safe interface to users so it reaps all the benefits of safe Rust code
+- The same benefits could be yielded in C, but it is possible that the interface has unsafe issues

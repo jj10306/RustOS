@@ -1,0 +1,1 @@
+- At byte offset 510, there are the bootsector signature bytes that determine if it is a valid MBR 
