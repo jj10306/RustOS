@@ -10,7 +10,7 @@ use shim::io;
 use shim::ioerr;
 use shim::newioerr;
 use shim::path;
-use shim::path::{Path, Component};
+use shim::path::{Path, Component, Components, PathBuf};
 
 use crate::mbr::MasterBootRecord;
 use crate::traits::{BlockDevice, FileSystem, Entry as EntryTrait};
@@ -46,7 +46,18 @@ impl<HANDLE: VFatHandle> VFat<HANDLE> {
         let mbr = MasterBootRecord::from(&mut device)?;
 
         // consider changing to work if the first partition isnt FAT (loop over partition entries in MBR?)
-        let start_of_partition = mbr.partition_table_entry_1.relative_sector as u64;
+        let start_of_partition;
+        if mbr.partition_table_entry_1.partition_type == 0xB || mbr.partition_table_entry_1.partition_type == 0xC {
+            start_of_partition = mbr.partition_table_entry_1.relative_sector as u64;
+        } else if mbr.partition_table_entry_2.partition_type == 0xB || mbr.partition_table_entry_2.partition_type == 0xC {
+            start_of_partition = mbr.partition_table_entry_2.relative_sector as u64;
+        } else if mbr.partition_table_entry_3.partition_type == 0xB || mbr.partition_table_entry_3.partition_type == 0xC {
+            start_of_partition = mbr.partition_table_entry_3.relative_sector as u64;
+        } else if mbr.partition_table_entry_4.partition_type == 0xB || mbr.partition_table_entry_4.partition_type == 0xC {
+            start_of_partition = mbr.partition_table_entry_4.relative_sector as u64;
+        } else {
+            panic!("No FAT partition found");
+        }
         let bpb = BiosParameterBlock::from(&mut device, start_of_partition)?;
 
         let BiosParameterBlock { total_logical_sectors: num_sectors, total_logical_sectors_alt: num_sectors_alt, bytes_per_sector, sectors_per_cluster, sectors_per_FAT: sectors_per_fat, num_reserved_sectors, num_FATs, root_cluster_num, ..  } = bpb;
@@ -211,12 +222,24 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
     type Entry = Entry<HANDLE>;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        
+        //resolve '.' and '..' in path bc '..' was causing UB
+        let mut resolved_path = PathBuf::new();
+        let mut comps = path.as_ref().components();
+        for comp in comps {
+            match comp {
+                Component::RootDir => {resolved_path.push("/");},
+                Component::Normal(s) => {resolved_path.push(s);},
+                Component::ParentDir => {resolved_path.pop();}
+                _ => {;}
+            }
+        }
+        // panic!("{:?}", resolved_path.into_os_string().into_string().unwrap());
+
         let root_dir_cluster = self.lock(|fat| fat.rootdir_cluster);
 
         let root_dir = Dir::new(self.clone(), root_dir_cluster, String::from("/"));
         let mut entry = Entry::Dir(root_dir);
-        let mut components = path.as_ref().components();
+        let mut components = resolved_path.as_path().components();
         let mut component = components.next();
         //skip root dir '/'
         match component.expect("Oops iterator") {
@@ -232,7 +255,9 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
             };
 
             entry = entry.into_dir().expect("Error converting to Dir").find(component_string)?;
-
+            // if a == 0 {
+            //     panic!("{:?}", entry);
+            // }
             match entry {
                 Entry::Dir(dir) => {entry = Entry::Dir(dir);},
                 Entry::File(_) => { 

@@ -75,6 +75,8 @@ impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
 
     //adds name/extension chars to the string to create the name and returns the number of chars added 
     fn build_string(&self, bytes: &[u8]) -> String {
+        use crate::alloc::string::ToString;
+        
         let mut byte_vec = Vec::new();
         for &byte in bytes {
             if byte == 0x0 || byte == 0x20 {
@@ -85,7 +87,7 @@ impl<HANDLE: VFatHandle> EntryIter<HANDLE> {
         }
         // let s = String::from_utf8_lossy(byte_vec.as_slice());
         // s.to_string()
-        String::from_utf8(byte_vec).unwrap()
+        String::from_utf8_lossy(byte_vec.as_slice()).to_string()
 
     }
 }

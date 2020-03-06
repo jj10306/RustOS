@@ -65,7 +65,7 @@ fn kmain() -> ! {
     
 
 
-    shell("# ");
+    shell("$ ");
 }
 
 

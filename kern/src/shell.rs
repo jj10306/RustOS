@@ -1,5 +1,5 @@
 use shim::io;
-use shim::path::{Path, PathBuf};
+use shim::path::{Path, PathBuf, Component};
 
 
 use stack_vec::StackVec;
@@ -76,7 +76,8 @@ pub fn shell(prefix: &str) -> ! {
     kprintln!("a VERY warm welcome to ...");
     kprintln!("~~~~~~~~~~~~~~ JOS ~~~~~~~~~~~~~~");
     loop {
-        kprint!("jakob@cs3210:{:?}{} ", cwd, prefix);
+        let cwd_string =  cwd.clone().into_os_string().into_string().unwrap();
+        kprint!("jakob@cs3210:[{}]{}", cwd_string, prefix);
         
         let a = &mut [0u8; 512];
         let mut input_buf = StackVec::new(a);  //should I be handling if the prefix is longer than one character?
@@ -144,9 +145,9 @@ fn invoke_appropriate_command(command: Command, cwd: &mut PathBuf) {
     match command_path {
         "echo" => echo(command_args),
         "ls" => ls(command_args, cwd),
-        // "cat" => cat(command_args),
-        // "pwd" => pwd(command_args),
-        // "cd" => cd(command_args),
+        "cat" => cat(command_args, cwd),
+        "pwd" => pwd(cwd),
+        "cd" => cd(command_args, cwd),
         _ => kprintln!("unknown command: ${}", command_path)
     }
 }
@@ -158,6 +159,66 @@ fn echo(args: & [&str]) {
         kprint!("{} ", s);
     }
     kprintln!();
+}
+fn pwd(cwd: &mut PathBuf) {
+    let path_str = cwd.clone().into_os_string().into_string().unwrap();
+    kprintln!("{}", path_str);
+}
+fn cat(args: & [&str], cwd: &mut PathBuf) {
+    let mut count = 0;
+    if args.len() == 0 { kprintln!("Please enter a file name!"); }
+    for file in args {
+        let path = construct_path(file, cwd);
+        match FILESYSTEM.open(path.clone()) {
+            Ok(entry) => {
+                if entry.is_dir() { 
+                    kprintln!("cat: {}: No such file or directory", entry.name());
+                 } else {
+                    let mut file = entry.into_file().unwrap();
+                    let mut buf = Vec::new();
+                    for i in 0..file.size { buf.push(0u8) }; 
+                    file.read(buf.as_mut_slice());
+                    let file_contents = if let Ok(string) = String::from_utf8(buf) {
+                                    string
+                                } else {
+                                    String::from("File contains invalid UTF-8\n")
+                                };
+                    if count < args.len() - 1 {
+                        kprintln!("{}", file_contents);
+                    } else {
+                        kprint!("{}", file_contents);
+                    }
+                    
+                 }
+            },
+            Err(_) => kprintln!("cat: {}: No such file or directory", file)
+        }
+        count += 1;
+    }
+}
+fn cd(args: & [&str], cwd: &mut PathBuf) {
+    let length = args.len();
+    let dest;
+    if length == 0 {
+        dest = "/";
+    } else if length == 1 {
+        dest = args[0];
+    } else {
+        kprintln!("too many arguments");
+        return ();
+    }
+    let path = construct_path(dest, cwd);
+    match FILESYSTEM.open(path.clone()) {
+        Ok(entry) => {
+            //resolve path       
+            while cwd.pop() == true {;};
+            cwd.push(path);
+
+        },
+        Err(_) => { kprintln!("no such file or directory"); }
+    }
+
+
 }
 fn ls(args: & [&str], cwd: &mut PathBuf) {
     let mut path = PathBuf::new();
@@ -199,7 +260,6 @@ fn ls(args: & [&str], cwd: &mut PathBuf) {
 
 //TODO: Add support for ls-ing a file (return vector of length 1)
 fn get_entries(cwd: &mut PathBuf, show_hidden: bool) -> io::Result<Vec<Entry<PiVFatHandle>>> {
-    kprintln!("{:?}", cwd);
     let entry = FILESYSTEM.open(cwd.clone())?;
     let mut entry_vec = Vec::new();
     if entry.is_dir() {
@@ -277,7 +337,19 @@ fn construct_path(dest: &str, cwd: &mut PathBuf) -> PathBuf {
         path.push(cwd);
         path.push(dest);
     }
-    path
+    //resolve '.' and '..' in path bc '..' was causing UB
+    let mut resolved_path = PathBuf::new();
+    let mut comps = path.as_path().components();
+    for comp in comps {
+        match comp {
+            Component::RootDir => {resolved_path.push("/");},
+            Component::Normal(s) => {resolved_path.push(s);},
+            Component::ParentDir => {resolved_path.pop();}
+            _ => {;}
+        }
+    }
+
+    resolved_path
 }
 
 

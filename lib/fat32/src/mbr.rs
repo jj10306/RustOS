@@ -24,7 +24,7 @@ const_assert_size!(CHS, 3);
 pub struct PartitionEntry { 
     bootable_indicator: u8,
     starting_chs: CHS,
-    partition_type: u8,
+    pub partition_type: u8,
     ending_chs: CHS,
     pub relative_sector: u32,
     pub total_sectors: u32
