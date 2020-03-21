@@ -25,7 +25,6 @@ pub struct FatEntry(pub u32);
 impl FatEntry {
     /// Returns the `Status` of the FAT entry `self`.
     pub fn status(&self) -> Status {
-        // let mask = !(0xF << 28);
         // let masked_value = self.0 & mask;
         // if masked_value == 0 {
         //     Status::Free
@@ -48,9 +47,6 @@ impl FatEntry {
             _ => panic!("bad fat entry")
         }
     }
-}
-
-impl fmt::Debug for FatEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("FatEntry")
             .field("value", &{ self.0 })

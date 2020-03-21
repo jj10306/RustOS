@@ -36,6 +36,13 @@ impl Timer {
         let chi = self.registers.CHI.read() as u64;
         Duration::from_micros(chi << 32 | clo)
     }
+
+    /// Sets up a match in timer 1 to occur `t` duration from now. If
+    /// interrupts for timer 1 are enabled and IRQs are unmasked, then a timer
+    /// interrupt will be issued in `t` duration.
+    pub fn tick_in(&mut self, t: Duration) {
+        unimplemented!()
+    }
 }
 
 /// Returns current time.
@@ -51,4 +58,11 @@ pub fn spin_sleep(t: Duration) {
         //why dont you need a noop here?
         ;   
     }
+}
+
+/// Sets up a match in timer 1 to occur `t` duration from now. If
+/// interrupts for timer 1 are enabled and IRQs are unmasked, then a timer
+/// interrupt will be issued in `t` duration.
+pub fn tick_in(t: Duration) {
+    unimplemented!()
 }

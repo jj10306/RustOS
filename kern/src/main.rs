@@ -6,6 +6,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(raw_vec_internals)]
 #![feature(panic_info_message)]
+#![feature(ptr_internals)]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
@@ -19,6 +20,10 @@ pub mod console;
 pub mod fs;
 pub mod mutex;
 pub mod shell;
+pub mod param;
+pub mod process;
+pub mod traps;
+pub mod vm;
 
 
 
@@ -28,8 +33,7 @@ pub mod shell;
 // const GPIO_SET0: *mut u32 = (GPIO_BASE + 0x1C) as *mut u32;
 // const GPIO_CLR0: *mut u32 = (GPIO_BASE + 0x28) as *mut u32;
 
-// FIXME: You need to add dependencies here to
-// test your drivers (Phase 2). Add them as needed.
+
 use pi::{timer::spin_sleep, gpio::Gpio, uart::MiniUart};
 use core::time::Duration;
 use core::fmt::Write;
@@ -42,10 +46,6 @@ use pi::atags::Atags;
 use allocator::Allocator;
 use fs::FileSystem;
 
-
-
-
-
 use alloc::vec::Vec;
 use alloc::string::String;
 
@@ -53,10 +53,13 @@ use alloc::string::String;
 pub static ALLOCATOR: Allocator = Allocator::uninitialized();
 pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 
-fn kmain() -> ! {
- 
-    spin_sleep(Duration::from_millis(1000));
 
+pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
+pub static VMM: VMManager = VMManager::uninitialized();
+pub static IRQ: Irq = Irq::uninitialized();
+
+fn kmain() -> ! {
+    spin_sleep(Duration::from_millis(1000));
 
     unsafe {
         ALLOCATOR.initialize();

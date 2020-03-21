@@ -14,7 +14,6 @@ use crate::vfat;
 use mbr::{MasterBootRecord, PartitionEntry, CHS};
 use vfat::{BiosParameterBlock, VFat, VFatHandle};
 
-
 #[derive(Clone)]
 struct StdVFatHandle(Arc<Mutex<VFat<Self>>>);
 
