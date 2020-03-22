@@ -1,0 +1,11 @@
+Assuming that the source address is in x0, the destination address is in x1, and the number of bytes to copy is in x2, 
+which is guaranteed to be a non-zero multiple of 8, how would you implement memcpy in ARMv8 assembly? Ensure you ret.
+
+memcpy:
+    cmp x2, xzr
+    beq exit
+    ldr x5, [x0], #8
+    str x5, [x1], #8
+    b memcpy
+exit:
+    ret

@@ -1,0 +1,40 @@
+zeros_bss
+    - This function zeros out the uninitialized data segment of memomory (bss);
+    the bss segment contains all global/static variables that are initialized to zero or do not have explicit initialization 
+switch_to_el2
+    - check that the current EL is EL3
+    - after the 'defreg' macro, all of the register's fields have been initialized in the program, but these registers
+    still need to be set in the processor
+        SCR_EL3 (Security Configuration Register)
+            - NS (non-secure bit): indicates that EL1 and EL0 are in Non-secure state, so memory accesses from these exception levels are 
+            not able to access secure memory
+            - SMD (Secure Monitor Call disable): makes all SMC instructions UNDEFINED
+            - HCE (Hypervisor Call instruction enable): HVC instructions are enabled at EL1
+            - RW: makes the next lower level's (EL2) execution state AArch64
+        SPSR_EL3 (Saved Program Status Register)
+            - M (AArch64 state (Exception level and selected SP) that an exception was taken from): Exception was taken from EL2 and the SP is determined by the EL
+            - F,I,A, D: FIQ, IRQ, SE interrupt, Debug mask bit all set so exceptions are not taken
+        ELR_EL3 (Exception Link Register)
+            - set the address to return to as the start of the switch_to_el2 function, bc after eret, current_el() should be 2, so the first conditional will fail
+    - execute the eret instruction that returns from the current exception level
+    - entire point of this function is to set all the appropriate registers that are depended upon when the eret instruction is called
+switch_to_el1
+    - check that the current EL is EL2
+    - after the 'defreg' macro, all of the register's fields have been initialized in the program, but these registers
+    still need to be set in the processor
+
+    - set EL1's stack pointer 
+    CNTHCTL_EL2 (Counter-timer Hypervisor Control register)
+        - EL0VCTEN and EL0PCTEN: causes no instructions to be trapped
+    CNTVOFF_EL2 (Counter-timer Virtual Offset register)
+        - sets the offset to zero
+    HCR_EL2 (Hypervisor Configuration Register)
+        - sets the execution state for EL1 to AArch64
+    - enables floatnig point and SVE
+    - sets the reserved bits of System COntrol register in order to have it in a known state
+    SPSR_EL3 (Saved Program Status Register)
+        - M (AArch64 state (Exception level and selected SP) that an exception was taken from): Exception was taken from EL1 and the SP is determined by the EL
+        - F,I,A, D: FIQ, IRQ, SE interrupt, Debug mask bit all set so exceptions are not taken
+
+
+

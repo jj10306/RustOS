@@ -1,0 +1,4 @@
+Assume you’re running in EL1, how would you write the immediate 0xABCDE to ELR_EL1 using ARMv8 assembly?
+    mov x0, #0xBCDE
+    movk x0, #0xA, LSL 16
+    msr ELR_EL1, x0

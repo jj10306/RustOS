@@ -1,0 +1,4 @@
+Read the documentation for the cbz instruction in (ref: C6.2.36). What does the instruction do? How would you use it?
+    - Compare and Branch on Zero compares the value in a register with zero, and conditionally branches to a label at a
+    PC-relative offset if the comparison is equal.
+    - You could use this when decrementing the predicate variable of a loop to jump to a certain label when the loop has terminated
