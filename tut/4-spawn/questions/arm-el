@@ -1,0 +1,2 @@
+Which instructions, exactly, would you run to determine the current exception level?
+    -  mrs x1, CurrentEL

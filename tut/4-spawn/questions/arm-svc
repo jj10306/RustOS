@@ -1,0 +1,2 @@
+A process is running in EL0 when it issues an svc instruction. To which address, exactly, does the CPU jump to?
+    - VBAR_EL1 + 0x400

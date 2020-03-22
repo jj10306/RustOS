@@ -1,0 +1,4 @@
+How would you set the PC to the address A using the ret instruction? How would you set the PC to the address A using the eret instruction? 
+Be specific about which registers you would set to which values.
+    - ret: set the value in 'lr' to address A
+    - eret: set the value in ELR_ELx to address A

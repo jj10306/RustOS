@@ -1,0 +1,3 @@
+The stack pointer of a running program is A when an exception occurs. After handling the exception, 
+you’d like to return back to where the program was executing but want to change its stack pointer to B. How would you do so?
+    - load address B into SP

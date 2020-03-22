@@ -1,0 +1,3 @@
+An exception has occurred with the source running in the AArch64 state. The target is also running in AArch64. Which values in which registers would you change so that 
+on return from the exception via eret, the CPU switches to the AArch32 execution state?
+    - set the RW value in the PSTATE register to be 1

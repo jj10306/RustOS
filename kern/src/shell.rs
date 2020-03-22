@@ -11,11 +11,6 @@ use fat32::traits::FileSystem;
 use fat32::traits::{Dir, Entry as EntryTrait, Metadata, Timestamp};
 use fat32::vfat::Entry;
 
-use pi::atags::Atags;
-
-use fat32::traits::FileSystem;
-use fat32::traits::{Dir, Entry};
-
 use crate::console::{kprint, kprintln, CONSOLE};
 use crate::fs::PiVFatHandle;
 use crate::ALLOCATOR;

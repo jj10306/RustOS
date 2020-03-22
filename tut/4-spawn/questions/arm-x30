@@ -1,0 +1,2 @@
+If a value of 0xFFFF is written to x30, which two other registers names can be used to retrieve that value?
+    - lr and w30

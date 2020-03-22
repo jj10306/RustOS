@@ -1,0 +1,2 @@
+A process is running in EL0 when a timer interrupt occurs. To which address, exactly, does the CPU jump to?
+    - VBAR_ELx + 0x480

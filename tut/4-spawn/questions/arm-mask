@@ -1,0 +1,2 @@
+Which values would you write to which register to unmask IRQ interrupts only?
+    - write 0010 to DAIF

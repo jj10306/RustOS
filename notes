@@ -1,0 +1,21 @@
+ARM Notes:
+- Exception levels provide a logical separation of software execution privilege that applies across all
+operating states of the ARMv8-A architecture
+- The ARMv8-A architecture also defines two Execution States, AArch64 and AArch32. AArch64 state
+is unique to ARMv8-A, and uses 64-bit general-purpose registers, while AArch32 state provides
+backwards compatibility with ARMv7-A using 32-bit general-purpose registers
+- _ELx refers to register from target exception level x, _ELs refers to register in the source exception level s
+- SPSR (Saved Program Status Register)
+- When the PE takes an exception, the PE state is saved from PSTATE in the SPSR at the Exception level the
+exception is taken to. For example, if the PE takes an exception to EL1, the PE state is saved in SPSR_EL1.
+- Exceptions cannot be taken to EL0 
+- exceptions never cause execeution to move to a lower Exception level
+- an exception return is always to the same Exception level or a lower exception level
+    -   an exception return requires the simultaneous restoration of teh PC and PSTATE to the calues that are consistent witht he desired 
+        state of execution on returning from the exception
+- synchronous exception is caused by excecution or attempted execution of the instruction stream, and where the 
+return address provides details of the instruction that caused it
+- The location in memory where the handler is stored is called the exception vector
+-  In the ARM architecture, exception vectors are stored in a table, called the exception vector table.
+- each exception level has its own vector table, EL1, EL2, EL3
+- the table contains instructions to execute rather than a set of addresses

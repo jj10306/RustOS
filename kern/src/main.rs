@@ -45,6 +45,9 @@ use pi::atags::Atags;
 
 use allocator::Allocator;
 use fs::FileSystem;
+use process::GlobalScheduler;
+use traps::irq::Irq;
+use vm::VMManager;
 
 use alloc::vec::Vec;
 use alloc::string::String;
