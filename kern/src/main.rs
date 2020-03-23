@@ -39,6 +39,7 @@ use core::time::Duration;
 use core::fmt::Write;
 use shell::shell;
 use console::kprintln;
+use aarch64::current_el;
 
 
 use pi::atags::Atags;
@@ -63,8 +64,9 @@ pub static IRQ: Irq = Irq::uninitialized();
 
 fn kmain() -> ! {
     spin_sleep(Duration::from_millis(1000));
-
+    
     unsafe {
+        kprintln!("The current el is {}", current_el());
         ALLOCATOR.initialize();
         FILESYSTEM.initialize();
     }

@@ -74,9 +74,9 @@ unsafe fn switch_to_el1() {
         CNTHCTL_EL2.set(CNTHCTL_EL2.get() | CNTHCTL_EL2::EL0VCTEN | CNTHCTL_EL2::EL0PCTEN);
         CNTVOFF_EL2.set(0);
 
+
         // enable AArch64 in EL1 (A53: 4.3.36)
         HCR_EL2.set(HCR_EL2::RW | HCR_EL2::RES1);
-
         // enable floating point and SVE (SIMD) (A53: 4.3.38, 4.3.34)
         CPTR_EL2.set(0);
         CPACR_EL1.set(CPACR_EL1.get() | (0b11 << 20));
@@ -97,6 +97,8 @@ unsafe fn switch_to_el1() {
         );
 
         // FIXME: eret to itself, expecting current_el() == 1 this time
+        ELR_EL2.set(switch_to_el1 as u64);
+        asm::eret();
     }
 }
 

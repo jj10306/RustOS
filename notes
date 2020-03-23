@@ -19,3 +19,5 @@ return address provides details of the instruction that caused it
 -  In the ARM architecture, exception vectors are stored in a table, called the exception vector table.
 - each exception level has its own vector table, EL1, EL2, EL3
 - the table contains instructions to execute rather than a set of addresses
+
+?- why does the kernel seem to boot in EL2 instead of EL3? When I don't call switch to EL2, it still shows my current EL as 2?
