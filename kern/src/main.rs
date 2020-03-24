@@ -39,7 +39,7 @@ use core::time::Duration;
 use core::fmt::Write;
 use shell::shell;
 use console::kprintln;
-use aarch64::current_el;
+use aarch64::*;
 
 
 use pi::atags::Atags;
@@ -66,14 +66,15 @@ fn kmain() -> ! {
     spin_sleep(Duration::from_millis(1000));
     
     unsafe {
-        kprintln!("The current el is {}", current_el());
+        // kprintln!("The current el is {}", current_el());
         ALLOCATOR.initialize();
         FILESYSTEM.initialize();
     }
     
-
-
-    shell("$ ");
+    svc!(2);
+    loop {
+        shell("$ ");
+    }
 }
 
 

@@ -65,7 +65,7 @@ impl<'a> Command<'a> {
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns.
-pub fn shell(prefix: &str) -> ! {
+pub fn shell(prefix: &str) {
 
     let mut cwd = PathBuf::new();
     cwd.push("/");
@@ -91,7 +91,8 @@ pub fn shell(prefix: &str) -> ! {
                         let arg_buf = &mut [""; 64]; //slice that the arguments will be put into
                         match Command::parse(res, arg_buf) {
                             Ok(command) => {
-                                invoke_appropriate_command(command, &mut cwd);
+                                let rtn = invoke_appropriate_command(command, &mut cwd);
+                                if rtn { return; }
                             },
                             Err(Error::Empty) => {
                                 kprintln!();
@@ -139,17 +140,20 @@ pub fn shell(prefix: &str) -> ! {
 //helper functions for my shell() function
 
 
-fn invoke_appropriate_command(command: Command, cwd: &mut PathBuf) {
+fn invoke_appropriate_command(command: Command, cwd: &mut PathBuf) -> bool {
     let command_path = command.path();
     let command_args = & command.args.as_slice()[1..];
+    let mut exit = false;
     match command_path {
         "echo" => echo(command_args),
         "ls" => ls(command_args, cwd),
         "cat" => cat(command_args, cwd),
         "pwd" => pwd(cwd),
         "cd" => cd(command_args, cwd),
+        "exit" => { exit = true; }
         _ => kprintln!("unknown command: ${}", command_path)
-    }
+    };
+    exit
 }
 
 

@@ -10,6 +10,7 @@ use pi::interrupt::{Controller, Interrupt};
 use self::syndrome::Syndrome;
 use self::syscall::handle_syscall;
 
+
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Kind {
@@ -41,5 +42,24 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    unimplemented!("handle_exception");
+    use aarch64;
+    use crate::console::kprintln;
+    use crate::shell::shell;
+    
+    // kprintln!("Info: {:?}", info);
+    // kprintln!("esr: {:?}", esr);
+    // loop {
+    //     aarch64::nop();
+    // }
+    let syndrome = Syndrome::from(esr);
+    kprintln!("Info: {:?}", info);
+    kprintln!("esr: {:?}", esr);
+    kprintln!("syndrome: {:?}", syndrome);
+    match syndrome {
+        Syndrome::Brk(comment) => {
+            shell("(dbg)$ ")
+        },
+        _ => {kprintln!("Other")}
+    };
+
 }

@@ -21,3 +21,9 @@ return address provides details of the instruction that caused it
 - the table contains instructions to execute rather than a set of addresses
 
 ?- why does the kernel seem to boot in EL2 instead of EL3? When I don't call switch to EL2, it still shows my current EL as 2?
+
+
+- why is the frame pointer being used in the HANDLER function to store the exceptino kind and source?
+- which esr to use in context_save?
+- why can you not cast from &u64 to u64 but you can cast from *const u64 to u64 (init.rs)
+- how would you call an assembly function from HLL code?
