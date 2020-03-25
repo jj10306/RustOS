@@ -39,6 +39,7 @@ impl Stack {
 
     /// Internal method to cast to a `*mut u8`.
     unsafe fn as_mut_ptr(&self) -> *mut u8 {
+        let _:() = self.ptr.as_ptr();
         self.ptr.as_ptr() as _
     }
 

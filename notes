@@ -27,3 +27,8 @@ return address provides details of the instruction that caused it
 - which esr to use in context_save?
 - why can you not cast from &u64 to u64 but you can cast from *const u64 to u64 (init.rs)
 - how would you call an assembly function from HLL code?
+
+Phase 2:
+- Unique in Rust?
+- What would happen if you didn't implement Drop for Stack? 
+    Why dont we have to implement this for everytype we create?

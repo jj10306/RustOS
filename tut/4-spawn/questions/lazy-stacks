@@ -1,0 +1,3 @@
+The Stack structure allocates 1MiB of memory for the stack regardless of whether or how much of the stack the process actually uses. Thinking ahead to virtual memory, how might we use virtual memory to lazily 
+allocate memory for the stack so that no or minimal memory is used by the stack until it’s needed?
+    - We can just allocate pages as needed instead of doing it all up front

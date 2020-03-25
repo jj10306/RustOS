@@ -1,0 +1,8 @@
+ What would it mean for two processes to share a stack? 
+    - this would mean that the area of memory that each processes' stack build is the same area for both processes
+ Why would it be very likely that the processes would crash fairly quickly into their lives? 
+    - Because if one process overrode the frame of another process, then the return address of the other process' procedure would 
+    be corrupted and thus on return you would most likely return to an invalid region of memory
+ Define a property of processes that, even if they were sharing a stack, would never crash as a result of sharing a stack.
+    -  Processes could maintain a linked list of frames that make up their section of the stack and then they would need to
+        communicate to the other thread where their last use of the stack ended, so the proceess can be sure to not override the other process' stack data

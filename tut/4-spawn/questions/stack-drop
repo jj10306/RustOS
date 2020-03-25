@@ -1,0 +1,3 @@
+The Stack structure allocates a 16-byte aligned 1MiB block of memory when it is created. What ensures that this memory is freed when the Process that owns it is no longer around?
+    - The Stack struct implements Drop, where it deallocates the memory
+    

@@ -1,0 +1,6 @@
+Assuming processes have access to dynamic memory allocation, how could a process increase its stack size? 
+Be specific about which instructions the process would execute.
+    - The process could allocate a larger block for its stack, copy the previous stack contents over 
+    and then update the SP register by putting the new top of the stack in a 
+    register via the MOV instruction and then invoke the MSR to move the new top of the stack into SP register
+    
