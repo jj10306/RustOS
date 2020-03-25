@@ -11,6 +11,10 @@ use self::syndrome::Syndrome;
 use self::syscall::handle_syscall;
 
 
+use aarch64;
+use crate::console::kprintln;
+use crate::shell::shell;
+
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Kind {
@@ -42,24 +46,22 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    use aarch64;
-    use crate::console::kprintln;
-    use crate::shell::shell;
+
+    //change this to tf.get_elr()
+    tf.set_elr(tf.get_elr() + 4);
     
-    // kprintln!("Info: {:?}", info);
-    // kprintln!("esr: {:?}", esr);
-    // loop {
-    //     aarch64::nop();
+
+    //Note that you should only call Syndrome::from() for synchronous exceptions. 
+    //The ESR_ELx register is not guaranteed to hold a valid value otherwise.
+    // if info.kind == Info::Synchronous {
+        let syndrome = Syndrome::from(esr);
+
+        match syndrome {
+            Syndrome::Brk(comment) => {
+                shell("(dbg)$ ")
+            },
+            _ => {kprintln!("Other")}
+        };
     // }
-    let syndrome = Syndrome::from(esr);
-    kprintln!("Info: {:?}", info);
-    kprintln!("esr: {:?}", esr);
-    kprintln!("syndrome: {:?}", syndrome);
-    match syndrome {
-        Syndrome::Brk(comment) => {
-            shell("(dbg)$ ")
-        },
-        _ => {kprintln!("Other")}
-    };
 
 }

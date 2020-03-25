@@ -70,8 +70,8 @@ fn kmain() -> ! {
         ALLOCATOR.initialize();
         FILESYSTEM.initialize();
     }
-    
-    svc!(2);
+    // TODO: test with a data/instruction abort
+    brk!(2);
     loop {
         shell("$ ");
     }
