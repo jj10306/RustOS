@@ -46,7 +46,6 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-
     //change this to tf.get_elr()
     tf.set_elr(tf.get_elr() + 4);
     
@@ -54,14 +53,16 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     //Note that you should only call Syndrome::from() for synchronous exceptions. 
     //The ESR_ELx register is not guaranteed to hold a valid value otherwise.
     // if info.kind == Info::Synchronous {
+        kprintln!("info: {:?}", info);
         let syndrome = Syndrome::from(esr);
 
-        match syndrome {
-            Syndrome::Brk(comment) => {
-                shell("(dbg)$ ")
-            },
-            _ => {kprintln!("Other")}
-        };
+        kprintln!("{:?}", syndrome);
+        // match syndrome {
+        //     Syndrome::Brk(comment) => {
+        //         shell("(dbg)$ ")
+        //     },
+        //     _ => {kprintln!("{:?}", _)}
+        // };
     // }
 
 }

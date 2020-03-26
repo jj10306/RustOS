@@ -1,4 +1,5 @@
 use aarch64::ESR_EL1;
+use crate::console::kprintln;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Fault {
@@ -67,7 +68,14 @@ pub enum Syndrome {
 impl From<u32> for Syndrome {
     fn from(esr: u32) -> Syndrome {
         use self::Syndrome::*;
-        match ESR_EL1::get_value(esr as u64, ESR_EL1::EC) {
+        let esr64 = esr as u64;
+        let mask = ESR_EL1::EC;
+        let matchy = ESR_EL1::get_value(esr64, mask);
+        // let masked = esr & mask as u32;
+        // let trailing = esr.trailing_zeros();
+        // kprintln!("{:#b}, {}", masked, trailing);
+        // kprintln!("esr {:#b}, esr64 {:#b}, matchy {}, mask {:#b}",esr, esr64, matchy, ESR_EL1::EC);
+        match matchy {
             0b000000 => {
                 Unknown
             },

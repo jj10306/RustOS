@@ -21,8 +21,14 @@ impl TrapFrame {
     pub fn get_spsr(&self) -> u64 {
         self.spsr
     }
+    pub fn set_spsr(&mut self, val: u64) {
+        self.spsr = val;
+    }
     pub fn get_sp(&self) -> u64 {
         self.sp
+    }
+    pub fn set_sp(&mut self, val: u64) {
+        self.sp = val;
     }
     pub fn get_tpidr(&self) -> u64 {
         self.tpidr

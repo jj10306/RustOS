@@ -3,12 +3,15 @@ use alloc::collections::vec_deque::VecDeque;
 use core::fmt;
 
 use aarch64::*;
+use crate::shell::shell;
+use crate::console::kprintln;
 
 use crate::mutex::Mutex;
 use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE};
 use crate::process::{Id, Process, State};
 use crate::traps::TrapFrame;
 use crate::VMM;
+
 
 /// Process scheduler for the entire machine.
 #[derive(Debug)]
@@ -66,9 +69,41 @@ impl GlobalScheduler {
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
-        unimplemented!("GlobalScheduler::start()")
-    }
+        let mut process = Process::new().expect("Error occurred in creating process");
+        //set elr to start_shel function so on return from exception it executes this function
+        process.context.set_elr(GlobalScheduler::start_shell as u64);
+        //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
+        process.context.set_sp(process.stack.top().as_u64());
+        //set the EL to be 0 so that on 'eret' the process is running in EL0
+        process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+        //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
+        process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
 
+        unsafe {
+            //set SP to the trap frame so when we call context_restore, it is pointing to the correct values
+            asm!(
+                "mov SP, $0
+                bl context_restore
+                adr x0, _start
+                mov SP, x0
+                mov x0, xzr
+                eret"
+            :: "r"(process.context)
+            :: "volatile");
+
+        }
+
+        loop{}
+    }
+    //do we need #[no_mangle]
+    #[no_mangle]
+    pub extern "C" fn start_shell() {
+        unsafe { asm!("brk 1" :::: "volatile"); }
+        unsafe { asm!("brk 2" :::: "volatile"); }
+        shell("user0> ");
+        unsafe { asm!("brk 3" :::: "volatile"); }
+        loop { shell("user1> "); }
+    }
     /// Initializes the scheduler and add userspace processes to the Scheduler
     pub unsafe fn initialize(&self) {
         unimplemented!("GlobalScheduler::initialize()")
