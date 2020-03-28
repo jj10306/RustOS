@@ -112,6 +112,22 @@ impl Process {
     ///
     /// Returns `false` in all other cases.
     pub fn is_ready(&mut self) -> bool {
-        unimplemented!("Process::is_ready()")
+        match self.state {
+            State::Ready => true,
+            State::Waiting(_) => {
+                use core::mem::replace;
+                let mut owned_state = replace(&mut self.state, State::Ready);
+                if let State::Waiting(mut poll_fn) = owned_state {
+                    if poll_fn(self) == true {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    panic!("You shouldn't be here");
+                }
+            },
+            _ => false
+        }
     }
 }

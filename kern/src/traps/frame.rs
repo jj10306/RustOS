@@ -33,5 +33,9 @@ impl TrapFrame {
     pub fn get_tpidr(&self) -> u64 {
         self.tpidr
     }
+    pub fn set_tpidr(&mut self, val: u64) {
+        self.tpidr = val;
+    }
+    
 }
 

@@ -13,6 +13,7 @@ use crate::process::{Id, Process, State};
 use crate::traps::TrapFrame;
 use crate::VMM;
 use crate:: IRQ;
+use crate::SCHEDULER;
 
 
 /// Process scheduler for the entire machine.
@@ -67,30 +68,18 @@ impl GlobalScheduler {
     pub fn kill(&self, tf: &mut TrapFrame) -> Option<Id> {
         self.critical(|scheduler| scheduler.kill(tf))
     }
+
     pub fn timer_handler(tf: &mut TrapFrame) {
         timer::tick_in(TICK);
-        shell("handler > ");
+        kprintln!("switching");
+        //TODO: should this always be Ready or could it be Waiting? Do I need to add another parameter to know this info
+        SCHEDULER.switch(State::Ready, tf);
     }
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
-        // use pi::interrupt;
-        use alloc::boxed::Box;
-
-        let mut interrupt_controller = interrupt::Controller::new();
-        interrupt_controller.enable(interrupt::Interrupt::Timer1);
-        IRQ.register(interrupt::Interrupt::Timer1, Box::new(GlobalScheduler::timer_handler));
-        timer::tick_in(TICK);
-
-        let mut process = Process::new().expect("Error occurred in creating process");
-        //set elr to start_shel function so on return from exception it executes this function
-        process.context.set_elr(GlobalScheduler::start_shell as u64);
-        //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
-        process.context.set_sp(process.stack.top().as_u64());
-        //set the EL to be 0 so that on 'eret' the process is running in EL0
-        process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
-        //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
-        process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        let fake_tf: &mut TrapFrame = &mut Default::default();
+        self.switch_to(fake_tf);
         unsafe {
             //set SP to the trap frame so when we call context_restore, it is pointing to the correct values
             asm!(
@@ -100,27 +89,58 @@ impl GlobalScheduler {
                 mov SP, x0
                 mov x0, xzr
                 eret"
-            :: "r"(process.context)
+            :: "r"(fake_tf)
             :: "volatile");
 
         }
 
         loop{}
     }
-    //do we need #[no_mangle]
-    #[no_mangle]
-    pub extern "C" fn start_shell() {
-        // unsafe { asm!("brk 1" :::: "volatile"); }
-        unsafe { asm!("brk 2" :::: "volatile"); }
 
-        
-        shell("user0> ");
-        unsafe { asm!("brk 3" :::: "volatile"); }
-        loop { shell("user1> "); }
+    #[no_mangle]
+    pub extern "C" fn start_shell_0() {
+        loop { shell("0> "); }
+    }
+    #[no_mangle]
+    pub extern "C" fn start_shell_1() {
+        loop { shell("1> "); }
+    }
+    #[no_mangle]
+    pub extern "C" fn start_shell_2() {
+        loop { shell("2> "); }
+    }
+    #[no_mangle]
+    pub extern "C" fn start_shell_3() {
+        loop { shell("3> "); }
+    }
+    #[no_mangle]
+    pub extern "C" fn start_shell_4() {
+        loop { shell("4> "); }
     }
     /// Initializes the scheduler and add userspace processes to the Scheduler
     pub unsafe fn initialize(&self) {
-        unimplemented!("GlobalScheduler::initialize()")
+        // use pi::interrupt;
+        use alloc::boxed::Box;
+
+        let mut interrupt_controller = interrupt::Controller::new();
+        interrupt_controller.enable(interrupt::Interrupt::Timer1);
+        IRQ.register(interrupt::Interrupt::Timer1, Box::new(GlobalScheduler::timer_handler));
+        timer::tick_in(TICK);
+
+        let mut process_0 = create_process_0();
+        let mut process_1 = create_process_1();
+        let mut process_2 = create_process_2();
+        let mut process_3 = create_process_3();
+        let mut process_4 = create_process_4();
+
+        let scheduler = Scheduler::new();
+        *self.0.lock() = Some(scheduler);
+
+        self.add(process_0);
+        self.add(process_1);
+        self.add(process_2);
+        self.add(process_3);
+        self.add(process_4);
     }
 
     // The following method may be useful for testing Phase 3:
@@ -140,6 +160,81 @@ impl GlobalScheduler {
     //     page[0..24].copy_from_slice(text);
     // }
 }
+pub fn create_process_0() -> Process {
+    let mut process = Process::new().expect("Error occurred in creating process");
+    //set elr to start_shel function so on return from exception it executes this function
+    process.context.set_elr(GlobalScheduler::start_shell_0 as u64);
+    //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
+    process.context.set_sp(process.stack.top().as_u64());
+    //set the EL to be 0 so that on 'eret' the process is running in EL0
+    process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+    //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
+    process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+    //set the State to Ready
+    process.state = State::Ready;
+
+    process
+}
+pub fn create_process_1() -> Process {
+    let mut process = Process::new().expect("Error occurred in creating process");
+    //set elr to start_shel function so on return from exception it executes this function
+    process.context.set_elr(GlobalScheduler::start_shell_1 as u64);
+    //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
+    process.context.set_sp(process.stack.top().as_u64());
+    //set the EL to be 0 so that on 'eret' the process is running in EL0
+    process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+    //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
+    process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+    //set the State to Ready
+    process.state = State::Ready;
+
+    process
+}
+pub fn create_process_2() -> Process {
+    let mut process = Process::new().expect("Error occurred in creating process");
+    //set elr to start_shel function so on return from exception it executes this function
+    process.context.set_elr(GlobalScheduler::start_shell_2 as u64);
+    //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
+    process.context.set_sp(process.stack.top().as_u64());
+    //set the EL to be 0 so that on 'eret' the process is running in EL0
+    process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+    //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
+    process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+    //set the State to Ready
+    process.state = State::Ready;
+
+    process
+}
+pub fn create_process_3() -> Process {
+    let mut process = Process::new().expect("Error occurred in creating process");
+    //set elr to start_shel function so on return from exception it executes this function
+    process.context.set_elr(GlobalScheduler::start_shell_3 as u64);
+    //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
+    process.context.set_sp(process.stack.top().as_u64());
+    //set the EL to be 0 so that on 'eret' the process is running in EL0
+    process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+    //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
+    process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+    //set the State to Ready
+    process.state = State::Ready;
+
+    process
+}
+pub fn create_process_4() -> Process {
+    let mut process = Process::new().expect("Error occurred in creating process");
+    //set elr to start_shel function so on return from exception it executes this function
+    process.context.set_elr(GlobalScheduler::start_shell_4 as u64);
+    //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
+    process.context.set_sp(process.stack.top().as_u64());
+    //set the EL to be 0 so that on 'eret' the process is running in EL0
+    process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+    //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
+    process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+    //set the State to Ready
+    process.state = State::Ready;
+
+    process
+}
 #[derive(Debug)]
 pub struct Scheduler {
     processes: VecDeque<Process>,
@@ -149,7 +244,7 @@ pub struct Scheduler {
 impl Scheduler {
     /// Returns a new `Scheduler` with an empty queue.
     fn new() -> Scheduler {
-        unimplemented!("Scheduler::new()")
+        Scheduler { processes: VecDeque::new(), last_id: None } 
     }
 
     /// Adds a process to the scheduler's queue and returns that process's ID if
@@ -160,7 +255,20 @@ impl Scheduler {
     /// It is the caller's responsibility to ensure that the first time `switch`
     /// is called, that process is executing on the CPU.
     fn add(&mut self, mut process: Process) -> Option<Id> {
-        unimplemented!("Scheduler::add()")
+        if let Some(last_id) = self.last_id {
+            if let Some(new_id) = last_id.checked_add(1) {
+                process.context.set_tpidr(new_id);
+                self.processes.push_back(process);
+                Some(new_id)
+            } else {
+                None
+            }
+        } else {
+            let new_id = 0;
+            process.context.set_tpidr(new_id);
+            self.processes.push_back(process);
+            Some(new_id) 
+        }
     }
 
     /// Finds the currently running process, sets the current process's state
@@ -171,7 +279,24 @@ impl Scheduler {
     /// If the `processes` queue is empty or there is no current process,
     /// returns `false`. Otherwise, returns `true`.
     fn schedule_out(&mut self, new_state: State, tf: &mut TrapFrame) -> bool {
-        unimplemented!("Scheduler::schedule_out()")
+        if self.processes.is_empty() { return false; }
+        let mut i = 0;
+        let mut found = false;
+        for process in &mut self.processes {
+            if let State::Running = process.state {
+                if process.context.get_tpidr() == tf.get_tpidr() {
+                    found = true;
+                    break;
+                }
+            } 
+            i += 1;
+        }
+        if !found { return false; }
+        let mut removed_process = self.processes.remove(i).expect("Index out of bounds when trying to remove");
+        removed_process.state = new_state;
+        removed_process.context = Box::new(*tf);
+        self.processes.push_back(removed_process);
+        true
     }
 
     /// Finds the next process to switch to, brings the next process to the
@@ -182,14 +307,43 @@ impl Scheduler {
     /// If there is no process to switch to, returns `None`. Otherwise, returns
     /// `Some` of the next process`s process ID.
     fn switch_to(&mut self, tf: &mut TrapFrame) -> Option<Id> {
-        unimplemented!("Scheduler::switch_to()")
+        let mut i = 0;
+        let mut found = false;
+        for process in &mut self.processes {
+            if process.is_ready() {
+                found = true;
+                break;
+            }
+            i += 1;
+        }
+        if !found { return None; }
+        // TODO: Cleaner way of doing this
+        //temporarily remove selected process from queue so we can mutate it before we add it to the front
+        let mut ready_process = self.processes.remove(i).expect("Index out of bounds when trying to remove");
+        ready_process.state = State::Running;
+        let context_to_restore = *ready_process.context;
+        // restore the process' context from what is saved
+        *tf = context_to_restore;
+        let ready_pid = tf.get_tpidr();
+        kprintln!("In switch to, Ready Process ELR: {:?}, TF ELR {}", ready_process.context.get_elr(), tf.get_elr());
+        // add the 'Running' queue to the front of the queue now that its context has been restored
+        self.processes.push_front(ready_process);
+        Some(ready_pid)
+
+
     }
 
     /// Kills currently running process by scheduling out the current process
     /// as `Dead` state. Removes the dead process from the queue, drop the
     /// dead process's instance, and returns the dead process's process ID.
     fn kill(&mut self, tf: &mut TrapFrame) -> Option<Id> {
-        unimplemented!("Scheduler::kill()")
+        if let true = self.schedule_out(State::Dead, tf) {
+            let process_to_be_dropped = self.processes.pop_back();
+            drop(process_to_be_dropped);
+            Some(tf.get_tpidr())
+        } else {
+            None
+        }
     }
 }
 
