@@ -17,16 +17,31 @@ impl Irq {
     pub fn initialize(&self) {
         *self.0.lock() = Some([None, None, None, None, None, None, None, None]);
     }
-
+    //TODO: cleaner way than matching and using ref mut
+    
     /// Register an irq handler for an interrupt.
     /// The caller should assure that `initialize()` has been called before calling this function.
     pub fn register(&self, int: Interrupt, handler: IrqHandler) {
-        unimplemented!("Irq::register()")
+        let index = Interrupt::to_index(int);
+        match *self.0.lock() {
+            Some(ref mut handlers) =>  { handlers[index] = Some(handler); },
+            None => { panic!("Irq hasn't been initialized"); }
+        }
     }
 
     /// Executes an irq handler for the givven interrupt.
     /// The caller should assure that `initialize()` has been called before calling this function.
     pub fn invoke(&self, int: Interrupt, tf: &mut TrapFrame) {
-        unimplemented!("Irq::register()")
+        let index = Interrupt::to_index(int);
+        match *self.0.lock() {
+            Some(ref mut handlers) =>  { 
+                if let Some(ref mut handler) = handlers[index] {
+                    handler(tf);
+                } else {
+                    panic!("Irq hasn'handler hasn't been registered for this interrupt")
+                }
+            },
+            None => { panic!("Irq hasn't been initialized"); }
+        };
     }
 }

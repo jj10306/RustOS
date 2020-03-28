@@ -4,6 +4,7 @@ use core::fmt;
 
 use aarch64::*;
 use crate::shell::shell;
+use pi::{timer, interrupt};
 use crate::console::kprintln;
 
 use crate::mutex::Mutex;
@@ -11,6 +12,7 @@ use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE};
 use crate::process::{Id, Process, State};
 use crate::traps::TrapFrame;
 use crate::VMM;
+use crate:: IRQ;
 
 
 /// Process scheduler for the entire machine.
@@ -65,10 +67,21 @@ impl GlobalScheduler {
     pub fn kill(&self, tf: &mut TrapFrame) -> Option<Id> {
         self.critical(|scheduler| scheduler.kill(tf))
     }
-
+    pub fn timer_handler(tf: &mut TrapFrame) {
+        timer::tick_in(TICK);
+        shell("handler > ");
+    }
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
+        // use pi::interrupt;
+        use alloc::boxed::Box;
+
+        let mut interrupt_controller = interrupt::Controller::new();
+        interrupt_controller.enable(interrupt::Interrupt::Timer1);
+        IRQ.register(interrupt::Interrupt::Timer1, Box::new(GlobalScheduler::timer_handler));
+        timer::tick_in(TICK);
+
         let mut process = Process::new().expect("Error occurred in creating process");
         //set elr to start_shel function so on return from exception it executes this function
         process.context.set_elr(GlobalScheduler::start_shell as u64);
@@ -78,7 +91,6 @@ impl GlobalScheduler {
         process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
         //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
         process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
-
         unsafe {
             //set SP to the trap frame so when we call context_restore, it is pointing to the correct values
             asm!(
@@ -98,8 +110,10 @@ impl GlobalScheduler {
     //do we need #[no_mangle]
     #[no_mangle]
     pub extern "C" fn start_shell() {
-        unsafe { asm!("brk 1" :::: "volatile"); }
+        // unsafe { asm!("brk 1" :::: "volatile"); }
         unsafe { asm!("brk 2" :::: "volatile"); }
+
+        
         shell("user0> ");
         unsafe { asm!("brk 3" :::: "volatile"); }
         loop { shell("user1> "); }
@@ -126,7 +140,6 @@ impl GlobalScheduler {
     //     page[0..24].copy_from_slice(text);
     // }
 }
-
 #[derive(Debug)]
 pub struct Scheduler {
     processes: VecDeque<Process>,

@@ -69,12 +69,11 @@ fn kmain() -> ! {
         // kprintln!("The current el is {}", current_el());
         ALLOCATOR.initialize();
         FILESYSTEM.initialize();
+        IRQ.initialize();
         SCHEDULER.start()
     }
-    // TODO: test with a data/instruction abort
-    // brk!(2);
     // loop {
-    //     shell("$ ");
+    //     shell("main >");
     // }
 }
 

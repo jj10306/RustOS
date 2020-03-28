@@ -75,14 +75,37 @@ impl From<usize> for Interrupt {
 
 #[repr(C)]
 #[allow(non_snake_case)]
-struct Registers {
+pub struct Registers {
     // FIXME: Fill me in.
+    pub basic_IRQ_pending: Volatile<u32>,
+    pub IRQ_pending_1: Volatile<u32>,
+    pub IRQ_pending_2: Volatile<u32>,
+    pub FIQ_control: Volatile<u32>,
+    pub IRQ_enable_1: Volatile<u32>,
+    pub IRQ_enable_2: Volatile<u32>,        
+    pub basic_IRQ_enable: Volatile<u32>,    
+    pub IRQ_disable_1: Volatile<u32>,
+    pub IRQ_disable_2: Volatile<u32>,
+    pub basic_IRQ_disable: Volatile<u32>,
 }
+// pub struct Registers {
+//     // FIXME: Fill me in.
+//     pub basic_IRQ_pending: Volatile<u32>,
+//     pub IRQ_pending_1: Volatile<u64>,
+//     pub IRQ_pending_2: Volatile<u32>,
+//     pub FIQ_control: Volatile<u32>,
+//     pub IRQ_enable_1: Volatile<u64>,
+//     pub IRQ_enable_2: Volatile<u32>,        
+//     pub basic_IRQ_enable: Volatile<u32>,    
+//     pub IRQ_disable_1: Volatile<u64>,
+//     pub IRQ_disable_2: Volatile<u32>,
+//     pub basic_IRQ_disable: Volatile<u32>,
+// }
 
 /// An interrupt controller. Used to enable and disable interrupts as well as to
 /// check if an interrupt is pending.
 pub struct Controller {
-    registers: &'static mut Registers
+    pub registers: &'static mut Registers
 }
 
 impl Controller {
@@ -93,18 +116,29 @@ impl Controller {
         }
     }
 
-    /// Enables the interrupt `int`.
+    // Enables the interrupt `int`.
     pub fn enable(&mut self, int: Interrupt) {
-        unimplemented!()
+        let index = int as u32;
+        if index < 32 {
+            let val1 = self.registers.IRQ_enable_1.read();
+            self.registers.IRQ_enable_1.or_mask(0b10);
+            let val2 = self.registers.IRQ_enable_1.read();
+            // panic!("{}, {}", val1, val2);
+        } else {
+            self.registers.IRQ_enable_2.or_mask(1 << index % 32);
+        }
     }
 
     /// Disables the interrupt `int`.
     pub fn disable(&mut self, int: Interrupt) {
-        unimplemented!()
+        let index = int as u32;
+        // self.registers.IRQ_disable.or_mask(1 << index);
     }
 
     /// Returns `true` if `int` is pending. Otherwise, returns `false`.
     pub fn is_pending(&self, int: Interrupt) -> bool {
-        unimplemented!()
+        let index = int as u32;
+        // self.registers.IRQ_enable.has_mask(1 << index)
+        true
     }
 }

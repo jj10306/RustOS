@@ -71,7 +71,7 @@ pub fn shell(prefix: &str) {
     cwd.push("/");
 
 
-    spin_sleep(Duration::new(5, 0));
+    // spin_sleep(Duration::new(1, 0));
     
     kprintln!("a VERY warm welcome to ...");
     kprintln!("~~~~~~~~~~~~~~ JOS ~~~~~~~~~~~~~~");
@@ -85,7 +85,7 @@ pub fn shell(prefix: &str) {
             let mut consoley = CONSOLE.lock();
             let current_byte = consoley.read_byte();
             if current_byte == b'\n' || current_byte == b'\r' {
-                match from_utf8(input_buf.as_slice()) {
+                match from_utf8(input_buf.as_slice()) { 
                     Ok(res) => {
                         kprintln!();
                         let arg_buf = &mut [""; 64]; //slice that the arguments will be put into
