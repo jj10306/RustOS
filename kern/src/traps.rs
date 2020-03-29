@@ -59,17 +59,19 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         kprintln!("info: {:?}", info);
         match info.kind {
             Kind::Synchronous => {
-                tf.set_elr(tf.get_elr() + 4);
                 let syndrome = Syndrome::from(esr);
                 match syndrome {
                     Syndrome::Brk(comment) => {
+                        tf.set_elr(tf.get_elr() + 4);
                         shell("(dbg)$ ")
                     },
+                    Syndrome::Svc(n) => {
+                        handle_syscall(n, tf);
+                    }
                     _ => {kprintln!("not Brk")}
                 };
             },
             Kind::Irq => {
-                kprintln!("In the IRQ branch");
                 // let index = 0;
                 // for interrupt in Interrupt::iter() {
                 //     if Controller

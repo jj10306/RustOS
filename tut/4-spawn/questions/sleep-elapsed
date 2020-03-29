@@ -1,0 +1,5 @@
+In which situations, if any, will the return value from sleep differ from the input value? In which situations, if any, will they be identical?
+ What do you think the relative probability of each case is?
+    - When there are processes ahead of it in the queue when its sleep time is up and it still hasn't been polled for the first time. 
+    They would be the same when the sleep time has elapsed after or at the first time the poll function is invoked. Additionally, 
+    the sleep time has to be a multiple of TICK parameter for it to be a perfect match, thus the likelihood of a perfect match is quite unlikely.

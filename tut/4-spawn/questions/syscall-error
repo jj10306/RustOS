@@ -1,0 +1,6 @@
+Most Unix operating systems, including Linux, overload the first result register (x0, in our case) as the error value register. In these conventions, negative values with a certain range represent error codes; all other values are interpreted as successful return values. 
+What is the advantage to the approach that we have taken? What is the disadvantage?
+    - The advantage to this approach is that you have 2^64 possible error code, 
+    the disadvantage of this approach is that you are sometimes "wasting" a register when an error doesn
+    t actually occir
+

@@ -121,6 +121,7 @@ impl Process {
                     if poll_fn(self) == true {
                         true
                     } else {
+                        replace(&mut self.state, State::Waiting(poll_fn));
                         false
                     }
                 } else {

@@ -71,7 +71,6 @@ impl GlobalScheduler {
 
     pub fn timer_handler(tf: &mut TrapFrame) {
         timer::tick_in(TICK);
-        kprintln!("switching");
         //TODO: should this always be Ready or could it be Waiting? Do I need to add another parameter to know this info
         SCHEDULER.switch(State::Ready, tf);
     }
@@ -160,6 +159,7 @@ impl GlobalScheduler {
     //     page[0..24].copy_from_slice(text);
     // }
 }
+//TODO: refactor this
 pub fn create_process_0() -> Process {
     let mut process = Process::new().expect("Error occurred in creating process");
     //set elr to start_shel function so on return from exception it executes this function
@@ -259,7 +259,8 @@ impl Scheduler {
             if let Some(new_id) = last_id.checked_add(1) {
                 process.context.set_tpidr(new_id);
                 self.processes.push_back(process);
-                Some(new_id)
+                self.last_id = Some(new_id);
+                self.last_id
             } else {
                 None
             }
@@ -267,7 +268,8 @@ impl Scheduler {
             let new_id = 0;
             process.context.set_tpidr(new_id);
             self.processes.push_back(process);
-            Some(new_id) 
+            self.last_id = Some(new_id);
+            self.last_id
         }
     }
 
@@ -309,6 +311,8 @@ impl Scheduler {
     fn switch_to(&mut self, tf: &mut TrapFrame) -> Option<Id> {
         let mut i = 0;
         let mut found = false;
+        // kprintln!("Before queue: {:?}\n\n\n\n\n", &self.processes);
+
         for process in &mut self.processes {
             if process.is_ready() {
                 found = true;
@@ -325,9 +329,9 @@ impl Scheduler {
         // restore the process' context from what is saved
         *tf = context_to_restore;
         let ready_pid = tf.get_tpidr();
-        kprintln!("In switch to, Ready Process ELR: {:?}, TF ELR {}", ready_process.context.get_elr(), tf.get_elr());
         // add the 'Running' queue to the front of the queue now that its context has been restored
         self.processes.push_front(ready_process);
+        // kprintln!("After queue: {:?}\n\n\n\n\n", &self.processes);
         Some(ready_pid)
 
 

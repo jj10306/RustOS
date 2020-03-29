@@ -20,6 +20,8 @@ use shim::io::Read;
 use core::time::Duration;
 use pi::timer::spin_sleep;
 use core::str::from_utf8;
+use core::str::FromStr;
+use kernel_api::syscall;
 
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
@@ -150,7 +152,8 @@ fn invoke_appropriate_command(command: Command, cwd: &mut PathBuf) -> bool {
         "cat" => cat(command_args, cwd),
         "pwd" => pwd(cwd),
         "cd" => cd(command_args, cwd),
-        "exit" => { exit = true; }
+        "exit" => { exit = true; },
+        "sleep" => sleep(command_args),
         _ => kprintln!("unknown command: ${}", command_path)
     };
     exit
@@ -259,6 +262,22 @@ fn ls(args: & [&str], cwd: &mut PathBuf) {
     } else {
         kprintln!("Only the '-a' flag is supported currently!");
     }
+}
+
+fn sleep(args: & [&str]) {
+    if args.len() > 1 {
+        kprintln!("Error - enter command of the form 'sleep <ms>'")
+    }
+    if let Ok(res) = u32::from_str(args[0]) {
+        if let Ok(ms) = syscall::sleep(Duration::from_millis(res as u64)) {
+            kprintln!("night night for {} milliseconds ..zzzzzz", ms.as_millis());
+        } else {
+            kprintln!("Error when invoking 'sleep' syscall!");
+        }
+    } else {
+        kprintln!("Please enter an integer number of millisecondss to sleep!")
+    }
+    kprintln!();
 }
 
 

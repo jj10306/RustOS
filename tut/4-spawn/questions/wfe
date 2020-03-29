@@ -1,0 +1,5 @@
+Using the wfe instruction to wait when no process is ready means that the CPU stalls until an event arrives. 
+If no event arrives after a wfe is executed, scheduling never resumes. Why is this the correct behavior?
+
+    - Because when a process is in the waiting state, it is, by definition, waiting for an event to occur. That is the point of 
+    the EventPollFn closure
