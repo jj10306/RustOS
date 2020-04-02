@@ -14,6 +14,7 @@ use core::fmt;
 
 use crate::console::kprintln;
 use crate::mutex::Mutex;
+use crate::param::{PAGE_ALIGN, PAGE_SIZE};
 use pi::atags::{Atag, Atags};
 
 /// `LocalAlloc` is an analogous trait to the standard library's `GlobalAlloc`,
@@ -75,7 +76,6 @@ extern "C" {
 ///
 /// This function is expected to return `Some` under all normal cirumstances.
 pub fn memory_map() -> Option<(usize, usize)> {
-    let page_size = 1 << 12;
     let binary_end = unsafe { (&__text_end as *const u8) as usize };
 
     let atags = Atags::get();
@@ -94,7 +94,7 @@ pub fn memory_map() -> Option<(usize, usize)> {
         // panic!("end_adress {}, binary addr {}", end_address, binary_end);
         None
     } else {
-        Some((util::align_up(binary_end, page_size), util::align_down(end_address as usize, page_size)))
+        Some((util::align_up(binary_end, PAGE_ALIGN), util::align_down(end_address as usize, PAGE_ALIGN)))
     }
     
 

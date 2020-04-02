@@ -4,6 +4,8 @@ use core::fmt;
 #[derive(Default, Copy, Clone, Debug)]
 pub struct TrapFrame {
     // FIXME: Fill me in.
+    TTBR0_EL1: u64,
+    TTBR1_EL1: u64,
     elr: u64,
     spsr: u64,
     sp: u64,

@@ -26,7 +26,7 @@ impl VMManager {
     /// The caller should assure that the method is invoked only once during the kernel
     /// initialization.
     pub fn initialize(&self) {
-        unimplemented!();
+        *self.0.lock() = Some(KernPageTable::new());
     }
 
     /// Set up the virtual memory manager.
@@ -84,6 +84,7 @@ impl VMManager {
 
     /// Returns the base address of the kernel page table as `PhysicalAddr`.
     pub fn get_baddr(&self) -> PhysicalAddr {
-        unimplemented!();
+        //why do you need this as_ref()?
+        (*self.0.lock()).as_ref().expect("VMManager hasn't been initialized").get_baddr()
     }
 }

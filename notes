@@ -32,3 +32,14 @@ Phase 2:
 - Unique in Rust?
 - What would happen if you didn't implement Drop for Stack? 
     Why dont we have to implement this for everytype we create?
+
+
+Phase 3:
+- Why does the L2Table have 8192 entries even though the description says it will only contain 
+2 entries?
+- Why are virtual addresses 64 it but then when you print a pointer rn it is 32 bits?
+- What's the difference between VirtualAddress and L2/L3 Raw Entry? (See locate() function)
+- WHy would you ever use set_masked()?
+- why is T0SZ=34 (4GB) but T1SZ=34 (1GB) 
+- How do we ensure that all user processes only produce virtual addresses above USER_IMG_BASE
+- How much virtual address space does the kernel have? (paragraph right above Page Table Entry header)

@@ -40,9 +40,12 @@ context_save:
     mrs     x1, SP_EL0
     mrs     x2, SPSR_EL1
     mrs     x3, ELR_EL1     
+    mrs     x4, TTBR1_EL1
+    mrs     x5, TTBR0_EL1
 
     stp     x1, x0, [SP, #-16]!
     stp     x3, x2, [SP, #-16]!
+    stp     x5, x4, [SP, #-16]!
 
     //pass parameters in registers x0-x3
     mov     x0, x29
@@ -58,6 +61,7 @@ context_save:
 .global context_restore
 context_restore:
     // FIXME: Restore the context from the stack.
+    ldp     x5, x4, [SP], #16
     ldp     x3, x2, [SP], #16
     ldp     x1, x0, [SP], #16
 
@@ -65,6 +69,13 @@ context_restore:
     msr     SP_EL0, x1
     msr     SPSR_EL1, x2
     msr     ELR_EL1 , x3
+    msr     TTBR1_EL1 ,x4
+    msr     TTBR0_EL1 ,x5
+
+    dsb     ishst
+    tlbi    vmalle1
+    dsb     ish
+    isb
 
     ldp     q0, q1, [SP], #32
     ldp     q2, q3, [SP], #32

@@ -77,6 +77,9 @@ impl GlobalScheduler {
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal conditions.
     pub fn start(&self) -> ! {
+        use crate::allocator;
+        let (start, end) = allocator::memory_map().unwrap();
+        kprintln!("Start: {:#x}, End: {:#x}", start, end);
         let fake_tf: &mut TrapFrame = &mut Default::default();
         self.switch_to(fake_tf);
         unsafe {

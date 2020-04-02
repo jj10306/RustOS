@@ -1,0 +1,4 @@
+Given a virtual address, the MMU will use either the user page table based at TTBR1_EL1, or the kernel page table based at TTBR0_EL1 in order to correctly translate to the physical address. 
+But how does the MMU know which of the two tables to use for a given address?
+    - The translation table pointed to by TTBR0 is selected when the upper bits of the
+    virtual address (VA) are all set to 0. 
