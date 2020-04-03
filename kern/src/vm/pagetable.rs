@@ -11,6 +11,7 @@ use crate::allocator;
 use crate::param::*;
 use crate::vm::{PhysicalAddr, VirtualAddr};
 use crate::ALLOCATOR;
+use crate::console::kprintln;
 
 use aarch64::vmsa::*;
 use shim::const_assert_size;
@@ -146,9 +147,11 @@ impl PageTable {
             current_entry.set_value(0b11, RawL2Entry::SH);
             //set AF to 1? (not sure what value and why do we set this when we create it instead of the first time we use it)
             current_entry.set_value(0b1, RawL2Entry::AF);
+
             //set ADDR to address of corresponding L3PageTable
             let entry_value_47_16 = & pagetable.l3[i] as *const L3PageTable as *const u64 as u64;
-            current_entry.set_value(entry_value_47_16, RawL2Entry::ADDR);
+            current_entry.set_masked(entry_value_47_16, RawL2Entry::ADDR);
+
         }
     }
     
@@ -163,7 +166,6 @@ impl PageTable {
     fn locate(va: VirtualAddr) -> (usize, usize) {
         let va_u64 = va.as_u64();
         if va_u64 % PAGE_SIZE as u64 != 0 { panic!("Virtual address not aligned to PAGE_SZIE"); }
-        let temp_raw_l2 = RawL2Entry::new(va_u64);
         //13 bits to mask different parts of the VA
         let mask = 0b1_1111_1111_1111;
         // let l2_index = va_u64 & (mask << 29);
@@ -284,7 +286,9 @@ impl KernPageTable {
             //set AF to 1? (not sure what value and why do we set this when we create it instead of the first time we use it)
             entry.set_value(0b1, RawL2Entry::AF);
             //set ADDR to the upper bits of the page
-            entry.set_value(current_page as u64, RawL2Entry::ADDR);
+            entry.set_masked(current_page as u64, RawL2Entry::ADDR);
+
+            // kprintln!("{:?}", &entry);
 
             entry
 
@@ -347,7 +351,7 @@ impl UserPageTable {
             //set AF to 1? (not sure what value and why do we set this when we create it instead of the first time we use it)
             entry.set_value(0b1, RawL2Entry::AF);
             //set ADDR to address of the page
-            entry.set_value(addr, RawL2Entry::ADDR);
+            entry.set_masked(addr, RawL2Entry::ADDR);
             //set the RawL3Entry in the L3 table
             self.set_entry(VirtualAddr::from(va), entry);
     }

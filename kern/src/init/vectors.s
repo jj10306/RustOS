@@ -62,13 +62,7 @@ context_save:
 context_restore:
     // FIXME: Restore the context from the stack.
     ldp     x5, x4, [SP], #16
-    ldp     x3, x2, [SP], #16
-    ldp     x1, x0, [SP], #16
-
-    msr     TPIDR_EL0, x0
-    msr     SP_EL0, x1
-    msr     SPSR_EL1, x2
-    msr     ELR_EL1 , x3
+    
     msr     TTBR1_EL1 ,x4
     msr     TTBR0_EL1 ,x5
 
@@ -76,11 +70,20 @@ context_restore:
     tlbi    vmalle1
     dsb     ish
     isb
+    
+    ldp     x3, x2, [SP], #16
+    ldp     x1, x0, [SP], #16
 
+    msr     TPIDR_EL0, x0
+    msr     SP_EL0, x1
+    msr     SPSR_EL1, x2
+    msr     ELR_EL1 , x3
+
+    
     ldp     q0, q1, [SP], #32
     ldp     q2, q3, [SP], #32
     ldp     q4, q5, [SP], #32
-    ldp     q6, q7, [SP], #32
+    ldp     q6, q7, [SP], #32   
     ldp     q8, q9, [SP], #32
     ldp     q10, q11, [SP], #32
     ldp     q12, q13, [SP], #32

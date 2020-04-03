@@ -27,6 +27,8 @@ impl VMManager {
     /// initialization.
     pub fn initialize(&self) {
         *self.0.lock() = Some(KernPageTable::new());
+        self.setup();
+        kprintln!("leaving initialize");
     }
 
     /// Set up the virtual memory manager.
@@ -69,10 +71,8 @@ impl VMManager {
                 ((KERNEL_MASK_BITS as u64) << 0), // T0SZ=32 (4GB)
             );
             isb();
-
             TTBR0_EL1.set(baddr);
             TTBR1_EL1.set(baddr);
-
             asm!("dsb ish");
             isb();
 

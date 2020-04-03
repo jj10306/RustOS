@@ -102,13 +102,13 @@ macro_rules! defbit {
                 self.0 = val;
                 self
             }
-
+            // works when the val you pass has value you want to set in the mask bits
             #[inline(always)]
             pub fn set_masked(&mut self, val: u64, mask: u64) -> &mut Self {
                 self.0 = (self.0 & !mask) | (val & mask);
                 self
             }
-
+            // works when the val you pass has value you want to set in the first bits
             #[inline(always)]
             pub fn set_value(&mut self, val: u64, mask: u64) -> &mut Self {
                 self.0 = (self.0 & !mask)

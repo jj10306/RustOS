@@ -44,6 +44,19 @@ impl TrapFrame {
     pub fn set_gpr(&mut self, reg_num: u8, val: u64) {
         self.gprs[reg_num as usize] = val;
     }
+    pub fn get_ttbr0(&self) -> u64 {
+        self.TTBR0_EL1
+    }
+    pub fn set_ttbr0(&mut self, val: u64) {
+        self.TTBR0_EL1 = val;
+    }
+    pub fn get_ttbr1(&self) -> u64 {
+        self.TTBR1_EL1
+    }
+    pub fn set_ttbr1(&mut self, val: u64) {
+        self.TTBR1_EL1 = val;
+    }
+    
     
 }
 
