@@ -52,15 +52,15 @@ pub struct Info {
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     //change this to tf.get_elr()
     
-
+    // kprintln!("{:?}", tf.get_tpidr());
     //Note that you should only call Syndrome::from() for synchronous exceptions. 
     //The ESR_ELx register is not guaranteed to hold a valid value otherwise.
     // if info.kind == Info::Synchronous {
-        kprintln!("info: {:?}, kind {:?}", info, &info.kind);
+        // kprintln!("info: {:?}, kind {:?}", info, &info.kind);
         match info.kind {
             Kind::Synchronous => {
                 let syndrome = Syndrome::from(esr);
-                kprintln!("{:?}", &syndrome);
+                // kprintln!("{:?}", &syndrome);
                 match syndrome {
                     Syndrome::Brk(comment) => {
                         tf.set_elr(tf.get_elr() + 4);
@@ -69,16 +69,22 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                     Syndrome::Svc(n) => {
                         handle_syscall(n, tf);
                     }
-                    _ => {kprintln!("not Brk")}
+                    _ => {return ();}//kprintln!("not Brk")}
                 };
             },
             Kind::Irq => {
+
                 // let index = 0;
                 // for interrupt in Interrupt::iter() {
                 //     if Controller
                 // }
                 // IRQ.register(Interrupt::Timer1, Box::new(timer_handler));
-                IRQ.invoke(Interrupt::Timer1, tf);
+                let controller = Controller::new();
+                for &interrupt in Interrupt::iter() {
+                    if controller.is_pending(interrupt) {
+                        IRQ.invoke(interrupt, tf);
+                    }
+                }
             },
             _ => { kprintln!("Not synchronous or Irq"); }
         }

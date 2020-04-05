@@ -19,6 +19,7 @@ use pi::timer;
 /// when `sleep` returned.
 /// //TODO: Fix bug where next process after slept one wont get full quantum
 pub fn sys_sleep(ms: u32, tf: &mut TrapFrame) {
+    kprintln!("goodnight sleep.... {}", tf.get_tpidr());
     //TODO: consider weird wrap around cases
     let wake_up_millis = timer::current_time().as_millis() + ms as u128;
     let wake_up_alarm = Duration::from_millis(wake_up_millis as u64);
@@ -26,7 +27,9 @@ pub fn sys_sleep(ms: u32, tf: &mut TrapFrame) {
     let boxed_fnmut = Box::new(move |p: &mut Process| {
         let current_time = timer::current_time();
         // kprintln!("alarm: {:?}, current: {:?}", wake_up_alarm, current_time);
+        // kprintln!("Process {:?}, Current: {:?}, Alarm: {:?}",p.context.get_tpidr(), current_time, wake_up_alarm);
         if current_time >= wake_up_alarm {
+            // kprintln!("in da cut, {:?}", p.context.get_tpidr());
             true
         } else {
             false
@@ -37,7 +40,7 @@ pub fn sys_sleep(ms: u32, tf: &mut TrapFrame) {
     tf.set_gpr(0, ms as u64 + (TICK.as_millis() as u64 * 5));
     tf.set_gpr(7, 1);
     timer::tick_in(TICK);
-    SCHEDULER.switch(State::Waiting(boxed_fnmut), tf);
+    SCHEDULER.switch(State::Waiting(boxed_fnmut), tf);  
 }
 
 // maxtimer = 10

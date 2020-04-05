@@ -94,7 +94,7 @@ pub fn memory_map() -> Option<(usize, usize)> {
         // panic!("end_adress {}, binary addr {}", end_address, binary_end);
         None
     } else {
-        Some((util::align_up(binary_end, PAGE_ALIGN), util::align_down(end_address as usize, PAGE_ALIGN)))
+        Some((util::align_up(binary_end, PAGE_SIZE), util::align_down(end_address as usize, PAGE_SIZE)))
     }
     
 

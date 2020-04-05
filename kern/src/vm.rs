@@ -28,7 +28,6 @@ impl VMManager {
     pub fn initialize(&self) {
         *self.0.lock() = Some(KernPageTable::new());
         self.setup();
-        kprintln!("leaving initialize");
     }
 
     /// Set up the virtual memory manager.
@@ -39,6 +38,7 @@ impl VMManager {
     ///
     /// Panics if the current system does not support 64KB memory translation granule size.
     pub fn setup(&self) {
+        // panic!("{:#x}, {:#x}", ((core::usize::MAX - 1) / 16) * 16 % 16, (core::usize::MAX - 1) % 16);
         let kern_page_table = self.0.lock();
         let baddr = kern_page_table.as_ref().unwrap().get_baddr().as_u64();
 

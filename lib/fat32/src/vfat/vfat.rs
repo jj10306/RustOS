@@ -221,7 +221,6 @@ impl<'a, HANDLE: VFatHandle> FileSystem for &'a HANDLE {
     type Entry = Entry<HANDLE>;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        //resolve '.' and '..' in path bc '..' was causing UB
         let mut resolved_path = PathBuf::new();
         let mut comps = path.as_ref().components();
         for comp in comps {

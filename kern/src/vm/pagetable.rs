@@ -287,9 +287,8 @@ impl KernPageTable {
             entry.set_value(0b1, RawL2Entry::AF);
             //set ADDR to the upper bits of the page
             entry.set_masked(current_page as u64, RawL2Entry::ADDR);
-
-            // kprintln!("{:?}", &entry);
-
+            let (_, end) = allocator::memory_map().unwrap();
+            
             entry
 
     }
@@ -332,7 +331,11 @@ impl UserPageTable {
         self.initialize_and_set_l3_entry(relative_va, allocated_page_addr);
         unsafe {
             //is this right? why are we returning an array of bytes? where is the return value ever used?
-            core::slice::from_raw_parts_mut(allocated_page_ptr, PAGE_SIZE)
+            let mut arr = core::slice::from_raw_parts_mut(allocated_page_ptr, PAGE_SIZE);
+            // for i in (0..arr.len()) {
+            //     arr[i] = 0;
+            // }
+            arr
         }
     }
 

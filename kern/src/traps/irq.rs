@@ -38,7 +38,7 @@ impl Irq {
                 if let Some(ref mut handler) = handlers[index] {
                     handler(tf);
                 } else {
-                    panic!("Irq hasn'handler hasn't been registered for this interrupt")
+                    panic!("Irq handler hasn't been registered for this interrupt")
                 }
             },
             None => { panic!("Irq hasn't been initialized"); }

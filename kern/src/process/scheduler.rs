@@ -1,14 +1,15 @@
 use alloc::boxed::Box;
 use alloc::collections::vec_deque::VecDeque;
+use shim::path::PathBuf;
 use core::fmt;
 
 use aarch64::*;
 use crate::shell::shell;
 use pi::{timer, interrupt};
-use crate::console::kprintln;
+use crate::console::{kprintln, kprint};
 
 use crate::mutex::Mutex;
-use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE};
+use crate::param::{PAGE_MASK, PAGE_SIZE, TICK, USER_IMG_BASE, PAGE_ALIGN};
 use crate::process::{Id, Process, State};
 use crate::traps::TrapFrame;
 use crate::VMM;
@@ -58,7 +59,11 @@ impl GlobalScheduler {
             if let Some(id) = rtn {
                 return id;
             }
-            aarch64::wfi()  ;
+            // kprintln!("before wifi");
+            aarch64::wfi();
+
+            // kprintln!("after wifi");
+            // kprintln!("under wfi");
         }
     }
 
@@ -79,13 +84,26 @@ impl GlobalScheduler {
     pub fn start(&self) -> ! {
         let fake_tf: &mut TrapFrame = &mut Default::default();
         self.switch_to(fake_tf);
-        // kprintln!("after switch to {:?}", fake_tf);
+        timer::tick_in(TICK);
         unsafe {
             //set SP to the trap frame so when we call context_restore, it is pointing to the correct values
+            // asm!(
+            //     "
+            //     mov SP, $0
+            //     bl context_restore
+            //     mov x0, SP
+            //     add x0, x0, $1
+            //     and x0, x0, $2
+            //     mov SP, x0
+            //     mov x0, xzr
+            //     eret"
+            // :: "r"(fake_tf), "i"(PAGE_SIZE), "i"(!(PAGE_ALIGN - 1))
+            // :: "volatile");
             asm!(
                 "
                 mov SP, $0
                 bl context_restore
+                mov x0, SP
                 adr x0, _start
                 mov SP, x0
                 mov x0, xzr
@@ -94,6 +112,9 @@ impl GlobalScheduler {
             :: "volatile");
 
         }
+
+
+    
 
         loop{}
     }
@@ -120,28 +141,37 @@ impl GlobalScheduler {
     }
     /// Initializes the scheduler and add userspace processes to the Scheduler
     pub unsafe fn initialize(&self) {
+        
         // use pi::interrupt;
         use alloc::boxed::Box;
 
         let mut interrupt_controller = interrupt::Controller::new();
         interrupt_controller.enable(interrupt::Interrupt::Timer1);
         IRQ.register(interrupt::Interrupt::Timer1, Box::new(GlobalScheduler::timer_handler));
-        timer::tick_in(TICK);
-
+    
+        // kprintln!("in initiailize");
         let mut process_0 = self.create_process_0();
         let mut process_1 = self.create_process_1();
         let mut process_2 = self.create_process_2();
         let mut process_3 = self.create_process_3();
-        let mut process_4 = self.create_process_4();
+        // let mut process_4 = self.create_process_4();
+        // let sleep_path = &PathBuf::from("/sleep.bin");
 
-        
+        // let mut process_0 = Process::load(sleep_path).expect("Error creating the process");
+        // let mut process_1 = Process::load(sleep_path).expect("Error creating the process");
+        // let mut process_2 = Process::load(sleep_path).expect("Error creating the process");
+        // let mut process_3 = Process::load(sleep_path).expect("Error creating the process");
+
+
         let scheduler = Scheduler::new();
         *self.0.lock() = Some(scheduler);
 
+        // panic!("\n{:?}\n,{:?}\n{:?}\n", process_0, process_1, process_2);
         self.add(process_0);
-        // self.add(process_2);
-        // self.add(process_3);
         self.add(process_1);
+        self.add(process_2);
+
+        // self.add(process_3);    
         // self.add(process_4);
     }
 
@@ -170,9 +200,10 @@ impl GlobalScheduler {
         //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
         process.context.set_sp(process.stack.top().as_u64());
         //set the EL to be 0 so that on 'eret' the process is running in EL0
-        process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
         //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
-        process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        process.context.set_spsr(0x0000_0340);
         // set ttbr0 to base address of kernel page table
         process.context.set_ttbr0(VMM.get_baddr().as_u64());
         // set ttbr1 to base address of user page table
@@ -191,9 +222,10 @@ impl GlobalScheduler {
         //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
         process.context.set_sp(process.stack.top().as_u64());
         //set the EL to be 0 so that on 'eret' the process is running in EL0
-        process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
         //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
-        process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        process.context.set_spsr(0x0000_0340);
         // set ttbr0 to base address of kernel page table
         process.context.set_ttbr0(VMM.get_baddr().as_u64());
         // set ttbr1 to base address of user page table
@@ -208,13 +240,20 @@ impl GlobalScheduler {
     pub fn create_process_2(&self) -> Process {
         let mut process = Process::new().expect("Error occurred in creating process");
         //set elr to start_shel function so on return from exception it executes this function
-        process.context.set_elr(GlobalScheduler::start_shell_2 as u64);
+        process.context.set_elr(USER_IMG_BASE as u64);
         //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
         process.context.set_sp(process.stack.top().as_u64());
         //set the EL to be 0 so that on 'eret' the process is running in EL0
-        process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
         //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
-        process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        process.context.set_spsr(0x0000_0340);
+        // set ttbr0 to base address of kernel page table
+        process.context.set_ttbr0(VMM.get_baddr().as_u64());
+        // set ttbr1 to base address of user page table
+        process.context.set_ttbr1(process.vmap.get_baddr().as_u64());
+        
+        self.test_phase_3(&mut process);
         //set the State to Ready
         process.state = State::Ready;
 
@@ -223,13 +262,20 @@ impl GlobalScheduler {
     pub fn create_process_3(&self) -> Process {
         let mut process = Process::new().expect("Error occurred in creating process");
         //set elr to start_shel function so on return from exception it executes this function
-        process.context.set_elr(GlobalScheduler::start_shell_3 as u64);
+        process.context.set_elr(USER_IMG_BASE as u64);
         //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
         process.context.set_sp(process.stack.top().as_u64());
         //set the EL to be 0 so that on 'eret' the process is running in EL0
-        process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
         //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
-        process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        process.context.set_spsr(0x0000_0340);
+        // set ttbr0 to base address of kernel page table
+        process.context.set_ttbr0(VMM.get_baddr().as_u64());
+        // set ttbr1 to base address of user page table
+        process.context.set_ttbr1(process.vmap.get_baddr().as_u64());
+        
+        self.test_phase_3(&mut process);
         //set the State to Ready
         process.state = State::Ready;
 
@@ -238,13 +284,20 @@ impl GlobalScheduler {
     pub fn create_process_4(&self) -> Process {
         let mut process = Process::new().expect("Error occurred in creating process");
         //set elr to start_shel function so on return from exception it executes this function
-        process.context.set_elr(GlobalScheduler::start_shell_4 as u64);
+        process.context.set_elr(USER_IMG_BASE as u64);
         //set SP_EL1 to the top of the stack so that EL1 handlers have the entire stack space
         process.context.set_sp(process.stack.top().as_u64());
         //set the EL to be 0 so that on 'eret' the process is running in EL0
-        process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b11 << 2));
         //set the IRq interrupt bit to 0 so that it will take the timer interrupt for scheduling
-        process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        // process.context.set_spsr(process.context.get_spsr() & !(0b1 << 7));
+        process.context.set_spsr(0x0000_0340);
+        // set ttbr0 to base address of kernel page table
+        process.context.set_ttbr0(VMM.get_baddr().as_u64());
+        // set ttbr1 to base address of user page table
+        process.context.set_ttbr1(process.vmap.get_baddr().as_u64());
+        
+        self.test_phase_3(&mut process);
         //set the State to Ready
         process.state = State::Ready;
 
@@ -298,7 +351,12 @@ impl Scheduler {
     /// If the `processes` queue is empty or there is no current process,
     /// returns `false`. Otherwise, returns `true`.
     fn schedule_out(&mut self, new_state: State, tf: &mut TrapFrame) -> bool {
-        kprintln!("{:?}", self.processes);
+        // kprintln!("{:?}", self.processes);
+        // let mut a = 0;
+        // while a < 1000 {
+        //     kprintln!("{}", a);
+        //     a += 1;
+        // }
         if self.processes.is_empty() { return false; }
         let mut i = 0;
         let mut found = false;
@@ -314,9 +372,17 @@ impl Scheduler {
         if !found { return false; }
         let mut removed_process = self.processes.remove(i).expect("Index out of bounds when trying to remove");
         removed_process.state = new_state;
+        let pid = removed_process.context.get_tpidr();
         removed_process.context = Box::new(*tf);
         self.processes.push_back(removed_process);
-        kprintln!("{:?}", self.processes);
+
+        // for p_process in & self.processes {
+        //     kprintln!("\n{:?}\n", p_process);
+        // }
+
+        // timer::spin_sleep(core::time::Duration::from_secs(30));
+        // brk!(1);
+
         true
     }
 
@@ -328,6 +394,7 @@ impl Scheduler {
     /// If there is no process to switch to, returns `None`. Otherwise, returns
     /// `Some` of the next process`s process ID.
     fn switch_to(&mut self, tf: &mut TrapFrame) -> Option<Id> {
+        // kprintln!("{:?}", self.processes);
         let mut i = 0;
         let mut found = false;
         // kprintln!("Before queue: {:?}\n\n\n\n\n", &self.processes);
@@ -347,9 +414,11 @@ impl Scheduler {
         let context_to_restore = *ready_process.context;
         // restore the process' context from what is saved
         *tf = context_to_restore;
+        // kprintln!("{:?}", context_to_restore);
         let ready_pid = tf.get_tpidr();
         // add the 'Running' queue to the front of the queue now that its context has been restored
         self.processes.push_front(ready_process);
+        // panic!("{}", ready_pid);
         // kprintln!("After queue: {:?}\n\n\n\n\n", &self.processes);
         Some(ready_pid)
 
