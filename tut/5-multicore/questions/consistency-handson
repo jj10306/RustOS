@@ -1,0 +1,24 @@
+Using two threads, write an example that will print different set of results on SC, TSO, and ARM hardware. 
+Specify what can be printed on each memory consistency model.
+
+/* Thread 1 */
+A = 1; // (1)
+print!("{}", B); // (2)
+
+/* Thread 2 */
+B = A; // (3)
+print!("{}", A); // (4)
+
+Possible outputs for Sequential Consistency(SC):
+1-2-3-4: 01
+3-4-1-2: 00
+1-3-2-4: 11
+
+
+Possible Outputs for Total Store Ordering(TSO):
+1-2-3-4: 00 or 01 depending on when the write propogates to shared memory from the write buffer
+1-3-2-4: 11 depending on the write propogation
+
+Possible Outputs for ARM:
+The difference with ARM can't be seen with the provided example, but generally ARM provides a weak consistency model with data dependency
+gurantees

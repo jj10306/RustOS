@@ -1,0 +1,4 @@
+Line 1: Ensure that any outstanding writes to the translation tables have completed
+Line 2: Invalidate all EL1 TLB entries
+Line 3: Ensure the TLB invalidation has occurred
+Line 4: Flush the pipeline so no instructions are fetched using the old translation 

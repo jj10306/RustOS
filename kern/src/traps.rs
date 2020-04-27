@@ -7,15 +7,18 @@ pub use self::frame::TrapFrame;
 
 use alloc::boxed::Box;
 use pi::interrupt::{Controller, Interrupt};
+use pi::local_interrupt::{LocalController, LocalInterrupt};
 
 use self::syndrome::Syndrome;
 use self::syscall::handle_syscall;
+use crate::percore;
+use crate::traps::irq::IrqHandlerRegistry;
 
 use aarch64;
 use crate::console::kprintln;
 use crate::shell::shell;
-use crate:: IRQ;
 use crate::param::{TICK};
+use crate::GLOABAL_IRQ;
 
 use pi::timer;
 
@@ -60,6 +63,7 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         match info.kind {
             Kind::Synchronous => {
                 let syndrome = Syndrome::from(esr);
+                // kprintln!("{:?}", syndrome);
                 // kprintln!("{:?}", &syndrome);
                 match syndrome {
                     Syndrome::Brk(comment) => {
@@ -69,20 +73,14 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                     Syndrome::Svc(n) => {
                         handle_syscall(n, tf);
                     }
-                    _ => {return ();}//kprintln!("not Brk")}
+                    _ => {return ();}
                 };
             },
             Kind::Irq => {
-
-                // let index = 0;
-                // for interrupt in Interrupt::iter() {
-                //     if Controller
-                // }
-                // IRQ.register(Interrupt::Timer1, Box::new(timer_handler));
                 let controller = Controller::new();
-                for &interrupt in Interrupt::iter() {
+                for interrupt in Interrupt::iter() {
                     if controller.is_pending(interrupt) {
-                        IRQ.invoke(interrupt, tf);
+                        GLOABAL_IRQ.invoke(interrupt, tf);
                     }
                 }
             },

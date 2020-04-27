@@ -4,6 +4,7 @@ use shim::io;
 use shim::path::Path;
 
 use aarch64::*;
+use smoltcp::socket::SocketHandle;
 
 use crate::param::*;
 use crate::process::{Stack, State};
@@ -35,6 +36,9 @@ pub struct Process {
     pub vmap: Box<UserPageTable>,
     /// The scheduling state of the process.
     pub state: State,
+    // Lab 5 2.C
+    // Socket handles held by the current process
+    // pub sockets: Vec<SocketHandle>,
 }
 
 impl Process {
@@ -60,8 +64,8 @@ impl Process {
 
     }
 
-    /// Load a program stored in the given path by calling `do_load()` method.
-    /// Set trapframe `context` corresponding to the its page table.
+    /// Loads a program stored in the given path by calling `do_load()` method.
+    /// Sets trapframe `context` corresponding to its page table.
     /// `sp` - the address of stack top
     /// `elr` - the address of image base.
     /// `ttbr0` - the base address of kernel page table
@@ -89,6 +93,7 @@ impl Process {
         
         process.state = State::Ready;
 
+        // FIXME: Set trapframe for the process.
 
         Ok(process)
     }
@@ -117,14 +122,10 @@ impl Process {
 
         let mut page_start_address = USER_IMG_BASE as u64;
         let mut bytes_copied_to_mem = 0;
-        let mut iterations = 0;
         while bytes_copied_to_mem < file.size {
             let mut page = process.vmap.alloc(VirtualAddr::from(page_start_address), PagePerm::RWX);
             bytes_copied_to_mem += file.read(page)?;
             page_start_address += PAGE_SIZE as u64;
-            // kprintln!("bytes copied to mem: {}", bytes_copied_to_mem);
-            // kprintln!("Page bits {:?}", &page[..24]);
-            iterations += 1;
         }
 
         Ok(process)        

@@ -111,7 +111,7 @@ impl L3PageTable {
 #[repr(align(65536))]
 pub struct PageTable {
     pub l2: L2PageTable,
-    pub l3: [L3PageTable; 2],
+    pub l3: [L3PageTable; 3],
 }
 
 impl PageTable {
@@ -120,15 +120,19 @@ impl PageTable {
     fn new(perm: u64) -> Box<PageTable> {
         //how would you do this without a box? keeping 
         // in mind struct being on the stack and trying to get the address of L3 entries to put in L2
-        let l2 = L2PageTable::new();
-        let l3 = [L3PageTable::new(), L3PageTable::new()];
-        let pagetable = PageTable {
-            l2,
-            l3
-        };
-        let mut boxed_pagetable = Box::new(pagetable);
-        PageTable::initialize_l2_entries(&mut boxed_pagetable, perm, 2);
-
+        // let l2 = L2PageTable::new();
+        // let l3 = [L3PageTable::new(), L3PageTable::new(), L3PageTable::new()];
+        // let pagetable = PageTable {
+        //     l2,
+        //     l3
+        // };
+        let mut boxed_pagetable = Box::new(PageTable {
+            l2: L2PageTable::new(),
+            l3: [L3PageTable::new(), L3PageTable::new(), L3PageTable::new()]
+        });
+        
+        PageTable::initialize_l2_entries(&mut boxed_pagetable, perm, 3);
+        
         boxed_pagetable
 
     }
@@ -156,8 +160,7 @@ impl PageTable {
     }
     
     /// Returns the (L2index, L3index) extracted from the given virtual address.
-    /// Since we are only supporting 1GB virtual memory in this system, L2index
-    /// should be smaller than 2.
+    /// L2index should be smaller than the number of L3PageTable.
     ///
     /// # Panics
     ///
@@ -169,9 +172,9 @@ impl PageTable {
         //13 bits to mask different parts of the VA
         let mask = 0b1_1111_1111_1111;
         // let l2_index = va_u64 & (mask << 29);
-        let l2_index = (va_u64 & (0b1 << 29)) >> 29;
+        let l2_index = (va_u64 & (0b11 << 29)) >> 29;
         let l3_index = (va_u64 & (mask << 16)) >> 16;
-        if l2_index > 1 { panic!("L2 index can't be greater than 2"); }
+        if l2_index > 2 { panic!("L2 index can't be greater than 2"); }
         (l2_index as usize, l3_index as usize)
     }
 
@@ -212,7 +215,9 @@ impl<'a> IntoIterator for &'a PageTable {
     type IntoIter = Chain<Iter<'a, L3Entry>, Iter<'a, L3Entry>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.l3[0].entries.iter().chain(self.l3[1].entries.iter())
+        self.l3[0].entries.iter()
+            .chain(self.l3[1].entries.iter())
+                // .chain(self.l3[2].entries.iter()))
     }
 }
 
@@ -228,24 +233,24 @@ impl KernPageTable {
     /// as address[47:16]. Refer to the definition of `RawL3Entry` in `vmsa.rs` for
     /// more details.
     pub fn new() -> KernPageTable {
-        let mut kernel_pagetable = PageTable::new(PagePerm::RW as u64); 
-        // let limiting_factor = core::cmp::min(end_address, IO_BASE);
+        let mut kernel_pagetable = PageTable::new(0b00); 
         let mut current_page_start = 0;
         let last_page_start = IO_BASE_END - PAGE_SIZE;
         //handle cases where end_address is greater than IO_BASE? is that possible
         while current_page_start <= last_page_start {
-            if KernPageTable::is_valid_page(current_page_start) {
-                let new_entry;
+            let mut new_entry = RawL3Entry::new(0);
                 if KernPageTable::is_normal_page(current_page_start) {
-                    new_entry = KernPageTable::initialize_l3_entry(current_page_start, true);
+                    // KernPageTable::initialize_l3_entry(&mut new_entry, current_page_start, true);
+                    KernPageTable::initialize_l3_entry(&mut new_entry, current_page_start, 0b11, 0b000);
                 } else {
-                    // guranteed that this is a device page given structure of conditionals
-                    new_entry = KernPageTable::initialize_l3_entry(current_page_start, false);
+                    // guranteed that this is a device page given structure of conditionals 
+                    // KernPageTable::initialize_l3_entry(&mut new_entry, current_page_start, false);
+                    KernPageTable::initialize_l3_entry(&mut new_entry, current_page_start, 0b10, 0b001);
                 }
-                kernel_pagetable.set_entry(VirtualAddr::from(current_page_start), new_entry);
-            }
+            kernel_pagetable.set_entry(VirtualAddr::from(current_page_start), new_entry);
             current_page_start += PAGE_SIZE;
         }
+
         KernPageTable(kernel_pagetable)
     }
 
@@ -263,35 +268,57 @@ impl KernPageTable {
     }
 
 
+    
+    fn initialize_l3_entry(entry: &mut RawL3Entry, current_page: usize, sh: u64, attr: u64)  {
+        // kprintln!("in l3 init");
+        // let mut entry = RawL3Entry::new(0);
+        //set VALID to 1
+        entry.set_value(0b1, RawL3Entry::VALID);
+        //set TYPE to 1
+        entry.set_value(0b1, RawL3Entry::TYPE);
+        //set ATTR to 0b000 (normal memory)
+        entry.set_value(attr, RawL3Entry::ATTR);
+        // set SH to 0b11 (Inner shareable)
+        entry.set_value(sh, RawL3Entry::SH);
+        // set AP to 0b00 (Kerne; R/W)
+        entry.set_value(0b00, RawL3Entry::AP);
+        //set AF to 1? (not sure what value and why do we set this when we create it instead of the first time we use it)
+        entry.set_value(0b1, RawL3Entry::AF);
+        //set ADDR to the upper bits of the page
+        entry.set_masked(current_page as u64, RawL3Entry::ADDR);
+        
+        // entry
 
-    fn initialize_l3_entry(current_page: usize, is_normal_memory: bool) -> RawL3Entry {
-            let mut entry = RawL3Entry::new(0);
-            //set VALID to 1
-            entry.set_value(0b1, RawL2Entry::VALID);
-            //set TYPE to 1
-            entry.set_value(0b1, RawL2Entry::TYPE);
-            if is_normal_memory {
-                //set ATTR to 0b000 (normal memory)
-                entry.set_value(0b000, RawL2Entry::ATTR);
-                // set SH to 0b11 (Inner shareable)
-                entry.set_value(0b11, RawL2Entry::SH);
-            } else { 
-                //set ATTR to 0b001 (device memory)
-                entry.set_value(0b001, RawL2Entry::ATTR);
-                // set SH to 0b10 (Outer shareable)
-                entry.set_value(0b10, RawL2Entry::SH);
-            }
-            // set AP to 0b00 (Kerne; R/W)
-            entry.set_value(PagePerm::RW as u64, RawL2Entry::AP);
-            //set AF to 1? (not sure what value and why do we set this when we create it instead of the first time we use it)
-            entry.set_value(0b1, RawL2Entry::AF);
-            //set ADDR to the upper bits of the page
-            entry.set_masked(current_page as u64, RawL2Entry::ADDR);
-            let (_, end) = allocator::memory_map().unwrap();
+}
+    // fn initialize_l3_entry(entry: &mut RawL3Entry, current_page: usize, is_normal_memory: bool)  {
+    //         // kprintln!("in l3 init");
+    //         // let mut entry = RawL3Entry::new(0);
+    //         //set VALID to 1
+    //         entry.set_value(0b1, RawL3Entry::VALID);
+    //         //set TYPE to 1
+    //         entry.set_value(0b1, RawL3Entry::TYPE);
+    //         if is_normal_memory {
+    //             //set ATTR to 0b000 (normal memory)
+    //             entry.set_value(0b000, RawL3Entry::ATTR);
+    //             // set SH to 0b11 (Inner shareable)
+    //             entry.set_value(0b11, RawL3Entry::SH);
+    //         } else { 
+    //             //set ATTR to 0b001 (device memory)
+    //             entry.set_value(0b001, RawL3Entry::ATTR);
+    //             // set SH to 0b10 (Outer shareable)
+    //             entry.set_value(0b10, RawL3Entry::SH);
+    //         }
+    //         // set AP to 0b00 (Kerne; R/W)
+    //         entry.set_value(0b00, RawL3Entry::AP);
+    //         //set AF to 1? (not sure what value and why do we set this when we create it instead of the first time we use it)
+    //         entry.set_value(0b1, RawL3Entry::AF);
+    //         //set ADDR to the upper bits of the page
+    //         entry.set_masked(current_page as u64, RawL3Entry::ADDR);
+    //         // let (_, end) = allocator::memory_map().unwrap();
             
-            entry
+    //         // entry
 
-    }
+    // }
 }
 
 pub enum PagePerm {
@@ -408,3 +435,9 @@ impl fmt::Debug for UserPageTable {
         write!(f, "USerPageTable")
     }
 }
+
+
+
+
+
+

@@ -1,13 +1,15 @@
 use aarch64::*;
-
+use pi::common::SPINNING_BASE;
 use core::mem::zeroed;
-use core::ptr::write_volatile;
+use core::ptr::{write_volatile, read_volatile};
+use crate::kprintln;
 
 mod oom;
 mod panic;
 
 use crate::kmain;
 use crate::param::*;
+use crate::VMM;
 
 global_asm!(include_str!("init/vectors.s"));
 
@@ -19,6 +21,7 @@ global_asm!(include_str!("init/vectors.s"));
 // so, no debug build support!
 //
 
+/// Kernel entrypoint for core 0
 #[no_mangle]
 pub unsafe extern "C" fn _start() -> ! {
     if MPIDR_EL1.get_value(MPIDR_EL1::Aff0) == 0 {
@@ -109,4 +112,44 @@ unsafe fn kinit() -> ! {
     switch_to_el2();
     switch_to_el1();
     kmain();
+}
+
+/// Kernel entrypoint for core 1, 2, and 3
+#[no_mangle]
+pub unsafe extern "C" fn start2() -> ! {
+    // Lab 5 1.A
+    SP.set(KERN_STACK_BASE - KERN_STACK_SIZE * MPIDR_EL1.get_value(MPIDR_EL1::Aff0) as usize);
+    kinit2()
+}
+
+unsafe fn kinit2() -> ! {
+    switch_to_el2();
+    switch_to_el1();
+    kmain2()
+}
+
+unsafe fn kmain2() -> ! {
+    // Lab 5 1.A
+    // Notify core 0 that this core is fully awake
+    write_volatile(SPINNING_BASE.add(affinity()), zeroed());
+    VMM.wait();
+    let n = affinity();
+    loop{
+        // kprintln!("{}{}{}{}{}{}{}{}", n, n, n, n, n, n, n, n);
+    }
+}
+
+/// Wakes up each app core by writing the address of `init::start2`
+/// to their spinning base and send event with `sev()`.
+pub unsafe fn initialize_app_cores() {
+    // Lab 5 1.A
+    let start2_addr = start2 as usize;
+    for i in (1..=3) {
+        let curr_core_spinning_addr = SPINNING_BASE.add(i);
+        write_volatile(curr_core_spinning_addr, start2_addr);
+        sev();
+        while read_volatile(curr_core_spinning_addr) != 0 {
+            //wait until Core 0 receives acknowledgment from other core
+        }
+    }
 }

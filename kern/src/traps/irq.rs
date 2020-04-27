@@ -1,47 +1,125 @@
 use alloc::boxed::Box;
-use pi::interrupt::Interrupt;
+use core::ops::Index;
 
+use pi::interrupt::Interrupt;
+use pi::local_interrupt::LocalInterrupt;
+
+use crate::kprintln;
 use crate::mutex::Mutex;
 use crate::traps::TrapFrame;
 
+// Programmer Guide Chapter 10
+// AArch64 Exception Handling
 pub type IrqHandler = Box<dyn FnMut(&mut TrapFrame) + Send>;
-pub type IrqHandlers = [Option<IrqHandler>; Interrupt::MAX];
+type IrqHandlerMutex = Mutex<Option<IrqHandler>>;
 
-pub struct Irq(Mutex<Option<IrqHandlers>>);
+type GlobalIrqHandlers = [IrqHandlerMutex; Interrupt::MAX];
+type LocalIrqHandlers = [IrqHandlerMutex; LocalInterrupt::MAX];
 
-impl Irq {
-    pub const fn uninitialized() -> Irq {
-        Irq(Mutex::new(None))
+/// Global IRQ handler registry.
+pub struct GlobalIrq(GlobalIrqHandlers);
+/// Local (per-core) IRQ handler registry. (QA7: Chapter 4)
+pub struct LocalIrq(LocalIrqHandlers);
+/// Global FIQ handler registry. Our kerenl supports only one FIQ interrupt.
+pub struct Fiq(IrqHandlerMutex);
+
+impl GlobalIrq {
+    pub const fn new() -> GlobalIrq {
+        GlobalIrq([
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+        ])
     }
+}
 
-    pub fn initialize(&self) {
-        *self.0.lock() = Some([None, None, None, None, None, None, None, None]);
+impl LocalIrq {
+    pub const fn new() -> LocalIrq {
+        LocalIrq([
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+            Mutex::new(None),
+        ])
     }
-    //TODO: cleaner way than matching and using ref mut
-    
-    /// Register an irq handler for an interrupt.
-    /// The caller should assure that `initialize()` has been called before calling this function.
-    pub fn register(&self, int: Interrupt, handler: IrqHandler) {
-        let index = Interrupt::to_index(int);
-        match *self.0.lock() {
-            Some(ref mut handlers) =>  { handlers[index] = Some(handler); },
-            None => { panic!("Irq hasn't been initialized"); }
-        }
-    }
+}
 
-    /// Executes an irq handler for the givven interrupt.
-    /// The caller should assure that `initialize()` has been called before calling this function.
-    pub fn invoke(&self, int: Interrupt, tf: &mut TrapFrame) {
-        let index = Interrupt::to_index(int);
-        match *self.0.lock() {
-            Some(ref mut handlers) =>  { 
-                if let Some(ref mut handler) = handlers[index] {
-                    handler(tf);
-                } else {
-                    panic!("Irq handler hasn't been registered for this interrupt")
-                }
-            },
-            None => { panic!("Irq hasn't been initialized"); }
+impl Fiq {
+    pub const fn new() -> Fiq {
+        Fiq(Mutex::new(None))
+    }
+}
+
+impl Index<Interrupt> for GlobalIrq {
+    type Output = IrqHandlerMutex;
+
+    fn index(&self, int: Interrupt) -> &IrqHandlerMutex {
+        use Interrupt::*;
+        let index = match int {
+            Timer1 => 0,
+            Timer3 => 1,
+            Usb => 2,
+            Gpio0 => 3,
+            Gpio1 => 4,
+            Gpio2 => 5,
+            Gpio3 => 6,
+            Uart => 7,
         };
+        &self.0[index]
+    }
+}
+
+impl Index<LocalInterrupt> for LocalIrq {
+    type Output = IrqHandlerMutex;
+
+    fn index(&self, int: LocalInterrupt) -> &IrqHandlerMutex {
+        // Lab 5 1.C
+        unimplemented!("LocalInterrupt Index")
+    }
+}
+
+impl Index<()> for Fiq {
+    type Output = IrqHandlerMutex;
+
+    fn index(&self, _: ()) -> &IrqHandlerMutex {
+        // Lab 5 2.B
+        unimplemented!("FIQ Index")
+    }
+}
+
+/// A trait that defines the behavior of an IRQ (and FIQ) handler registry.
+pub trait IrqHandlerRegistry<I> {
+    fn register(&self, int: I, handler: IrqHandler);
+    fn invoke(&self, int: I, tf: &mut TrapFrame);
+}
+use core::fmt::Debug;
+/// A blanket implementation of `IrqHandlerRegistry` trait for all indexable
+/// struct that returns `IrqHandlerMutex`.
+impl<I, T> IrqHandlerRegistry<I> for T
+where
+    T: Index<I, Output = IrqHandlerMutex>,
+    I: Debug
+{
+    /// Register an irq handler for an interrupt.
+    fn register(&self, int: I, handler: IrqHandler) {
+        *self[int].lock() = Some(handler);
+    }
+
+    /// Executes an irq handler for the given interrupt.
+    fn invoke(&self, int: I, tf: &mut TrapFrame) {
+        (*self[int].lock()).as_mut().unwrap()(tf);
     }
 }

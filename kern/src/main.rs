@@ -14,14 +14,19 @@
 mod init;
 
 extern crate alloc;
+#[macro_use]
+extern crate log;
 
 pub mod allocator;
 pub mod console;
 pub mod fs;
+pub mod logger;
 pub mod mutex;
-pub mod shell;
+pub mod net;
 pub mod param;
+pub mod percore;
 pub mod process;
+pub mod shell;
 pub mod traps;
 pub mod vm;
 
@@ -46,8 +51,10 @@ use pi::atags::Atags;
 
 use allocator::Allocator;
 use fs::FileSystem;
+use net::uspi::Usb;
+use net::GlobalEthernetDriver;
 use process::GlobalScheduler;
-use traps::irq::Irq;
+use traps::irq::{Fiq, GlobalIrq};
 use vm::VMManager;
 
 use alloc::vec::Vec;
@@ -60,44 +67,47 @@ pub static FILESYSTEM: FileSystem = FileSystem::uninitialized();
 
 pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
 pub static VMM: VMManager = VMManager::uninitialized();
-pub static IRQ: Irq = Irq::uninitialized();
+pub static USB: Usb = Usb::uninitialized();
+pub static GLOABAL_IRQ: GlobalIrq = GlobalIrq::new();
+pub static FIQ: Fiq = Fiq::new();
+pub static ETHERNET: GlobalEthernetDriver = GlobalEthernetDriver::uninitialized();
 
-fn kmain() -> ! {
-    spin_sleep(Duration::from_millis(1000));
-    
-    unsafe {
-        // kprintln!("The current el is {}", current_el());
-        ALLOCATOR.initialize();
-        FILESYSTEM.initialize();
-        IRQ.initialize();
-        VMM.initialize();
-        SCHEDULER.initialize();
-        SCHEDULER.start()
-    }
-    // loop {
-    //     shell("main >");
-    // }
+extern "C" {
+    static __text_beg: u64;
+    static __text_end: u64;
+    static __bss_beg: u64;
+    static __bss_end: u64;
 }
 
 
-// unsafe fn kmain() -> ! {
-//     // let mut gpio6_output = Gpio::new(6).into_output();
-//     // let mut gpio13_output = Gpio::new(13).into_output();
-//     // let mut gpio19_output = Gpio::new(19).into_output();
-//     // let mut gpio26_output = Gpio::new(26).into_output();
-//     // FIXME: Start the shell.
+fn kmain() -> ! {
+    spin_sleep(Duration::from_millis(5000));
 
-//     // *GPIO_FSEL1.write_volatile(GPIO_FSEL1.read_volatile() & ! (0b111 << 18));
 
-//     //* GPIO_FSEL1.write_volatile(GPIO_FSEL1.read_volatile() | (0b001 << 18));
-//     // let mut mini_uart = MiniUart::new();
-//     // loop {
-//         // let mut consoley = CONSOLE.lock();
-//         // let b = consoley.read_byte();
-//         // kprintln!("\x{b}");
-//         // // kprintln!("{}", x);
+    
+    unsafe {
+        crate::logger::init_logger();
 
-//     // }
-//     shell("(-8 ");
-//     }
+        info!(
+            "text beg: {:016x}, end: {:016x}",
+            &__text_beg as *const _ as u64, &__text_end as *const _ as u64
+        );
+        info!(
+            "bss  beg: {:016x}, end: {:016x}",
+            &__bss_beg as *const _ as u64, &__bss_end as *const _ as u64
+        );
+        ALLOCATOR.initialize();
+        FILESYSTEM.initialize();
+        VMM.initialize();
+        SCHEDULER.initialize();
+        kprintln!("initilize app cores");
+        init::initialize_app_cores();
+        VMM.wait();
+        kprintln!("statring the processes");
+        SCHEDULER.start()
+        // loop{}
+    }
+}
+
+
 
