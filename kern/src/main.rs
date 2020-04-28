@@ -96,15 +96,15 @@ fn kmain() -> ! {
             "bss  beg: {:016x}, end: {:016x}",
             &__bss_beg as *const _ as u64, &__bss_end as *const _ as u64
         );
-        kprintln!("Initializing kernel resources ...");
         ALLOCATOR.initialize();
         FILESYSTEM.initialize();
         VMM.initialize();
         SCHEDULER.initialize();
         init::initialize_app_cores();
+        kprintln!("dafjkdhsvjkladhsvjkdsfvalsdfkhvfdkjschdksavhfkshvadflkhvdslkvhhls");
         VMM.wait();
-        kprintln!("About to start the scheduler ...");
-        SCHEDULER.start()
+        // SCHEDULER.start()
+        loop{}
     }
 }
 

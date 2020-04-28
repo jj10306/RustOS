@@ -95,18 +95,15 @@ impl VMManager {
     pub fn wait(&self) {
         assert!(!is_mmu_ready());
 
-        if affinity() == 0 && get_preemptive_counter() != 0 {
-            panic!("Cannot carry a lock over when transitioning from MMU disabled -> enabled");
-        }
         unsafe {
             self.setup();
         }
-
-        info!("MMU is ready for core-{}/@sp={:016x}", affinity(), SP.get());
         
         // Lab 5 1.B
         self.ready_core_cnt.fetch_add(1, Ordering::AcqRel);
         while self.ready_core_cnt.load(Ordering::Acquire) != NCORES {;}
+        //moved log statement here as an answer to the mutex-bad-state questions
+        info!("MMU is ready for core-{}/@sp={:016x}", affinity(), SP.get());
     }
 
     /// Returns the base address of the kernel page table as `PhysicalAddr`.

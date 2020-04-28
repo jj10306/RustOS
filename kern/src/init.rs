@@ -135,7 +135,13 @@ unsafe fn kmain2() -> ! {
     VMM.wait();
     let n = affinity();
     loop {
-        kprintln!("{}{}{}{}{}{}{}{}", n, n, n, n, n, n, n, n);
+        if n == 1 {
+            kprintln!("11111111");
+        } else if n == 2 {
+            kprintln!("22222222");
+        } else if n == 3 {
+            kprintln!("33333333")
+        } 
     }
 }
 

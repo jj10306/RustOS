@@ -77,10 +77,9 @@ pub fn try_lock(&self) -> Option<MutexGuard<T>> {
             self.lock.store(false, Ordering::Relaxed);
         } else {
             // if it locked == true, set locked = false. if locked == false, do nothing
-            self.lock.compare_and_swap(true, false, Ordering::AcqRel);
             putcpu(self.owner.load(Ordering::Acquire));
+            self.lock.compare_and_swap(true, false, Ordering::AcqRel);
         }
-        
     }
 }
 
