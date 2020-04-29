@@ -42,16 +42,7 @@ impl Timer {
     /// interrupt will be issued in `t` duration.
     pub fn tick_in(&mut self, t: Duration) {
         // reset the match detect status bit
-        // self.registers.CS.or_mask(0b0010);
-        // //should this wrap around
         // // TODO: Handle if t is really big because as_micros() returns u128
-        // let mut comp_1 = &mut self.registers.COMPARE[1];
-        // let val1 = comp_1.read();
-        // let initial_value = self.registers.CLO.read();
-        // let target_value = initial_value.wrapping_add(t.as_micros() as u32);
-        // comp_1.write(target_value);
-        // let val2 = comp_1.read();
-        // panic!("Before {}, After {}", val1, val2);
         let time = self.registers.CLO.read().wrapping_add(t.as_micros() as u32);
         self.registers.COMPARE[1].write(time);
         self.registers.CS.write(0b0010);

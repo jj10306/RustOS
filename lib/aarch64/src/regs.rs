@@ -1,3 +1,4 @@
+
 // (ref: D7.2.74: Multiprocessor Affinity Register)
 defreg!(
     MPIDR_EL1,

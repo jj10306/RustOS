@@ -92,10 +92,7 @@ impl Controller {
     pub fn enable(&mut self, int: Interrupt) {
         let index = int as u32;
         if index < 32 {
-            let val1 = self.registers.IRQ_enable_1.read();
             self.registers.IRQ_enable_1.or_mask(0b10);
-            let val2 = self.registers.IRQ_enable_1.read();
-            // panic!("{}, {}", val1, val2);
         } else {
             self.registers.IRQ_enable_2.or_mask(1 << index % 32);
         }
