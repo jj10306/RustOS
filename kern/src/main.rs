@@ -101,10 +101,9 @@ fn kmain() -> ! {
         VMM.initialize();
         SCHEDULER.initialize();
         init::initialize_app_cores();
-        kprintln!("dafjkdhsvjkladhsvjkdsfvalsdfkhvfdkjschdksavhfkshvadflkhvdslkvhhls");
+        // kprintln!("yo");
         VMM.wait();
-        // SCHEDULER.start()
-        loop{}
+        SCHEDULER.start()
     }
 }
 

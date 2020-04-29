@@ -57,7 +57,6 @@ pub fn try_lock(&self) -> Option<MutexGuard<T>> {
         }
     }
 }
-
     // Once MMU/cache is enabled, do the right thing here. For now, we don't
     // need any real synchronization.
     #[inline(never)]

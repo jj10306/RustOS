@@ -111,7 +111,7 @@ impl L3PageTable {
 #[repr(align(65536))]
 pub struct PageTable {
     pub l2: L2PageTable,
-    pub l3: [L3PageTable; 3],
+    pub l3: [Box<L3PageTable>; 3],
 }
 
 impl PageTable {
@@ -128,7 +128,7 @@ impl PageTable {
         // };
         let mut boxed_pagetable = Box::new(PageTable {
             l2: L2PageTable::new(),
-            l3: [L3PageTable::new(), L3PageTable::new(), L3PageTable::new()]
+            l3: [Box::new(L3PageTable::new()),Box::new(L3PageTable::new()), Box::new(L3PageTable::new())]
         });
         
         PageTable::initialize_l2_entries(&mut boxed_pagetable, perm, 3);
@@ -153,7 +153,7 @@ impl PageTable {
             current_entry.set_value(0b1, RawL2Entry::AF);
 
             //set ADDR to address of corresponding L3PageTable
-            let entry_value_47_16 = & pagetable.l3[i] as *const L3PageTable as *const u64 as u64;
+            let entry_value_47_16 = &*pagetable.l3[i] as *const L3PageTable as *const u64 as u64;
             current_entry.set_masked(entry_value_47_16, RawL2Entry::ADDR);
 
         }

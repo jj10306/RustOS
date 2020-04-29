@@ -10,7 +10,7 @@ use core::time::Duration;
 
 use aarch64::*;
 use crate::shell::shell;
-use pi::{timer, interrupt};
+use pi::{timer, interrupt, local_interrupt};
 use crate::console::{kprintln, kprint};
 
 
@@ -87,7 +87,7 @@ impl GlobalScheduler {
                 return id;
             }
 
-            aarch64::wfi();
+            aarch64::wfe();
         }
     }
 
@@ -103,23 +103,30 @@ impl GlobalScheduler {
         //TODO: should this always be Ready or could it be Waiting? Do I need to add another parameter to know this info
         SCHEDULER.switch(State::Ready, tf);
     }
+    pub fn local_timer_handler(tf: &mut TrapFrame) {
+        kprint!("local tick on {}\n", affinity());
+        local_interrupt::local_tick_in(affinity(), TICK);
+        //TODO: should this always be Ready or could it be Waiting? Do I need to add another parameter to know this info
+        SCHEDULER.switch(State::Ready, tf);
+    }
     /// Starts executing processes in user space using timer interrupt based
     /// preemptive scheduling. This method should not return under normal
     /// conditions.
     pub fn start(&self) -> ! {
         let fake_tf: &mut TrapFrame = &mut Default::default();
         self.switch_to(fake_tf);
-        self.initialize_global_timer_interrupt();
+        if affinity() == 0 {
+            self.initialize_global_timer_interrupt();
+        }
+        self.initialize_local_timer_interrupt();
         unsafe {
-            //set SP to the trap frame so when we call context_restore, it is pointing to the correct values
+            //must restore x28 - x31 since context restore doesn't restore these registers, give up the SP adjustment
             asm!(
                 "
                 mov SP, $0
                 bl context_restore
-                mov x0, SP
-                adr x0, _start
-                mov SP, x0
-                mov x0, xzr
+                ldp x28, x29, [SP], #16
+                ldp lr, xzr, [SP], #16
                 eret"
             :: "r"(fake_tf)
             :: "volatile");
@@ -137,15 +144,21 @@ impl GlobalScheduler {
     /// Registers a timer handler with `Usb::start_kernel_timer` which will
     /// invoke `poll_ethernet` after 1 second.
     pub fn initialize_global_timer_interrupt(&self) {
-        timer::tick_in(TICK);
+        // let mut interrupt_controller = interrupt::Controller::new();
+        // interrupt_controller.enable(interrupt::Interrupt::Timer1);
+        // GLOABAL_IRQ.register(interrupt::Interrupt::Timer1, Box::new(GlobalScheduler::timer_handler));
     }
 
     /// Initializes the per-core local timer interrupt with `pi::local_interrupt`.
     /// The timer should be configured in a way that `CntpnsIrq` interrupt fires
     /// every `TICK` duration, which is defined in `param.rs`.
     pub fn initialize_local_timer_interrupt(&self) {
-        // Lab 5 2.C
-        unimplemented!("initialize_local_timer_interrupt()")
+        kprint!("in initialize local timer interrupt\n");
+        // Lab 5 2.C    
+        let mut local_interrupt_controller = local_interrupt::LocalController::new(affinity());
+        local_interrupt_controller.enable_local_timer();
+        local_irq().register(LocalInterrupt::CNTPNSIRQ, Box::new(GlobalScheduler::local_timer_handler));
+        local_interrupt_controller.tick_in(TICK);
     }
 
     /// Initializes the scheduler and add userspace processes to the Scheduler.
@@ -154,17 +167,14 @@ impl GlobalScheduler {
         // use pi::interrupt;
         use alloc::boxed::Box;
 
-        let mut interrupt_controller = interrupt::Controller::new();
-        interrupt_controller.enable(interrupt::Interrupt::Timer1);
-        GLOABAL_IRQ.register(interrupt::Interrupt::Timer1, Box::new(GlobalScheduler::timer_handler));
     
 
         let sleep_path = &PathBuf::from("/sleep.bin");
         let fib_path = &PathBuf::from("/fib.bin");
 
         let mut process_0 = Process::load(fib_path).expect("Error creating the process");
-        let mut process_1 = Process::load(sleep_path).expect("Error creating the process");
-        let mut process_2 = Process::load(sleep_path).expect("Error creating the process");
+        let mut process_1 = Process::load(fib_path).expect("Error creating the process");
+        let mut process_2 = Process::load(fib_path).expect("Error creating the process");
         let mut process_3 = Process::load(fib_path).expect("Error creating the process");
 
 
@@ -274,13 +284,7 @@ impl Scheduler {
         removed_process.context = Box::new(*tf);
         self.processes.push_back(removed_process);
 
-        // for p_process in & self.processes {
-        //     kprintln!("\n{:?}\n", p_process);
-        // }
-
-        // timer::spin_sleep(core::time::Duration::from_secs(30));
-        // brk!(1);
-
+        sev();
         true
     }
 

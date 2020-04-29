@@ -124,7 +124,7 @@ context_restore:
     movk    x29, \kind, LSL #16
     bl      context_save
     
-    ldp     x28, x29, [SP], #16
+    ldp     x28, x29, [SP], #16 
     ldp     lr, xzr, [SP], #16
     eret
 .endm

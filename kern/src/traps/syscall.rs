@@ -22,7 +22,8 @@ use pi::timer;
 /// when `sleep` returned.
 /// //TODO: Fix bug where next process after slept one wont get full quantum
 pub fn sys_sleep(ms: u32, tf: &mut TrapFrame) {
-    kprintln!("goodnight sleep.... {}", tf.get_tpidr());
+    // kprintln!("goodnight sleep.... {}", tf.get_tpidr());
+    kprint!("we sleepy ... \n");
     //TODO: consider weird wrap around cases
     let wake_up_millis = timer::current_time().as_millis() + ms as u128;
     let wake_up_alarm = Duration::from_millis(wake_up_millis as u64);

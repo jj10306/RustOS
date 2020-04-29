@@ -3,6 +3,7 @@ use pi::common::SPINNING_BASE;
 use core::mem::zeroed;
 use core::ptr::{write_volatile, read_volatile};
 use crate::kprintln;
+use crate::SCHEDULER;
 
 mod oom;
 mod panic;
@@ -134,15 +135,16 @@ unsafe fn kmain2() -> ! {
     write_volatile(SPINNING_BASE.add(affinity()), zeroed());
     VMM.wait();
     let n = affinity();
-    loop {
-        if n == 1 {
-            kprintln!("11111111");
-        } else if n == 2 {
-            kprintln!("22222222");
-        } else if n == 3 {
-            kprintln!("33333333")
-        } 
-    }
+    SCHEDULER.start()
+    // loop {
+    // '    // match n {
+    //     //     1 => kprintln!("11111111"),
+    //     //     2 => kprintln!("22222222"),
+    //     //     3 => kprintln!("33333333"),
+    //     //     _ => panic!("oops")
+    //     // }
+        
+    // }
 }
 
 /// Wakes up each app core by writing the address of `init::start2`

@@ -77,12 +77,25 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 };
             },
             Kind::Irq => {
-                let controller = Controller::new();
-                for interrupt in Interrupt::iter() {
-                    if controller.is_pending(interrupt) {
-                        GLOABAL_IRQ.invoke(interrupt, tf);
+                let core_idx = aarch64::affinity();
+                // Core 0 handles global IRQs
+                // if core_idx == 0 {
+                //     let controller = Controller::new();
+                //     for interrupt in Interrupt::iter() {
+                //         if controller.is_pending(interrupt) {
+                //             GLOABAL_IRQ.invoke(interrupt, tf);
+                //         }
+                //     }
+                // } 
+                // Each core handes its own local IRQs
+                let local_controller = LocalController::new(core_idx);
+                for local_int in LocalInterrupt::iter() {
+                    if local_controller.is_pending(local_int) {
+                        percore::local_irq().invoke(local_int, tf);
                     }
                 }
+                
+
             },
             _ => { kprintln!("Not synchronous or Irq"); }
         }
